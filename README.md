@@ -18,6 +18,8 @@ Natívna macOS aplikácia (SwiftUI) na správu Homebrew a Brewfile.
 Zmeny v Brewfile sa ukladajú automaticky, poslednú úpravu vrátite cez ⌘Z (Úpravy → Späť).
 Pred prvým uložením v každej session sa pôvodný súbor zálohuje do `~/Library/Application Support/BrewGUI/Backups`.
 Ak Brewfile medzitým zmení iný program, aplikácia sa spýta, či ho načítať, alebo prepísať.
+Stav nainštalovaných balíkov sa obnoví pri každom prepnutí do aplikácie (najviac raz za 10 s), po každej
+operácii a ručne cez ⌘R – zachytí tak aj `brew install` spustený v Termináli.
 Ak cask potrebuje heslo správcu, zobrazí sa systémový dialóg (cez `SUDO_ASKPASS`).
 
 ## Spustenie

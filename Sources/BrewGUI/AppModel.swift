@@ -1,6 +1,7 @@
 import AppKit
 import BrewCore
 import Observation
+import OSLog
 import SwiftUI
 
 /// Jedna spustená brew operácia s priebežným výstupom.
@@ -53,6 +54,8 @@ final class AppModel {
     @ObservationIgnored private var autosaveTask: Task<Void, Never>?
     /// Súbor, ktorý sme v tejto session už zálohovali (záloha = stav pred prvým uložením).
     @ObservationIgnored private var backedUpFile: URL?
+    @ObservationIgnored private var lastStateRefresh = Date.distantPast
+    @ObservationIgnored private let log = Logger(subsystem: "local.brewgui", category: "state")
     var isDirty: Bool { brewfile.text != savedText }
     var externalChangeDetected = false
 
@@ -215,9 +218,21 @@ final class AppModel {
         _ = await (a, b, c)
     }
 
+    /// Volané pri prepnutí do aplikácie – zachytí zmeny urobené mimo nej (napr. `brew install` v Termináli).
+    /// Počas bežiacej operácie sa neobnovuje (urobí sa po jej skončení) a najviac raz za 10 s.
+    func refreshOnActivation() {
+        guard client != nil, !isBusy, Date().timeIntervalSince(lastStateRefresh) > 10 else { return }
+        log.notice("Obnovujem stav po aktivácii aplikácie")
+        Task {
+            await refreshInstalled()
+            await refreshOutdated()
+        }
+    }
+
     func refreshInstalled() async {
         guard let client, !loadingInstalled else { return }
         loadingInstalled = true
+        lastStateRefresh = Date()
         defer { loadingInstalled = false }
         do {
             installed = try await client.installedState()
