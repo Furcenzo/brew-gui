@@ -1,0 +1,428 @@
+import AppKit
+import BrewCore
+import Observation
+import SwiftUI
+
+/// Jedna spustená brew operácia s priebežným výstupom.
+@MainActor @Observable
+final class Job: Identifiable {
+    enum State: Equatable { case running, succeeded, failed(Int32), cancelled }
+
+    let id = UUID()
+    let title: String
+    let command: String
+    var lines: [String] = []
+    var state: State = .running
+    let started = Date()
+    @ObservationIgnored var task: Task<Void, Never>?
+
+    init(title: String, command: String) {
+        self.title = title
+        self.command = command
+    }
+
+    var isRunning: Bool { state == .running }
+    var lastLine: String { lines.last ?? command }
+}
+
+enum SidebarItem: Hashable {
+    case brewfile(EntryKind?)
+    case missing
+    case sync
+    case outdated
+    case unmanaged
+    case search
+}
+
+@MainActor @Observable
+final class AppModel {
+    static let defaultFile = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Brewfile")
+
+    let client: BrewClient?
+
+    // Brewfile
+    private(set) var fileURL: URL
+    var brewfile = Brewfile()
+    private(set) var savedText = ""
+    var isDirty: Bool { brewfile.text != savedText }
+    var externalChangeDetected = false
+
+    // Stav systému
+    private(set) var installed = InstalledState()
+    private(set) var installedLoaded = false
+    private(set) var loadingInstalled = false
+    private(set) var outdated: [OutdatedPackage] = []
+    private(set) var outdatedLoaded = false
+    private(set) var loadingOutdated = false
+    var greedyOutdated = false
+    private(set) var allFormulae: [String] = []
+    private(set) var allCasks: [String] = []
+
+    // Úlohy
+    private(set) var jobs: [Job] = []
+    var currentJob: Job? { jobs.last }
+    var isBusy: Bool { jobs.contains { $0.isRunning } }
+    var consoleExpanded = false
+
+    // UI
+    var sidebarSelection: SidebarItem? = .brewfile(nil)
+    var errorMessage: String?
+
+    init() {
+        client = BrewClient.locate()
+        let stored = UserDefaults.standard.string(forKey: "lastBrewfile").map { URL(fileURLWithPath: $0) }
+        if let stored, FileManager.default.fileExists(atPath: stored.path) {
+            fileURL = stored
+        } else {
+            fileURL = Self.defaultFile
+        }
+        loadFile(fileURL)
+    }
+
+    // MARK: - Súbor
+
+    func loadFile(_ url: URL) {
+        do {
+            let text = FileManager.default.fileExists(atPath: url.path) ? try String(contentsOf: url, encoding: .utf8) : ""
+            fileURL = url
+            brewfile = Brewfile(parsing: text)
+            savedText = brewfile.text
+            externalChangeDetected = false
+            UserDefaults.standard.set(url.path, forKey: "lastBrewfile")
+        } catch {
+            errorMessage = "Brewfile sa nepodarilo načítať: \(error.localizedDescription)"
+        }
+    }
+
+    func reloadFile() { loadFile(fileURL) }
+
+    func save() {
+        do {
+            try backupCurrentFile()
+            try brewfile.text.write(to: fileURL, atomically: true, encoding: .utf8)
+            savedText = brewfile.text
+            externalChangeDetected = false
+        } catch {
+            errorMessage = "Brewfile sa nepodarilo uložiť: \(error.localizedDescription)"
+        }
+    }
+
+    /// Pred prepísaním odloží pôvodný súbor do ~/Library/Application Support/BrewGUI/Backups.
+    private func backupCurrentFile() throws {
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return }
+        let dir = URL.applicationSupportDirectory.appendingPathComponent("BrewGUI/Backups", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let stamp = Date().formatted(.iso8601.year().month().day().time(includingFractionalSeconds: false).timeSeparator(.omitted))
+        let target = dir.appendingPathComponent("\(fileURL.lastPathComponent)-\(stamp)")
+        if !FileManager.default.fileExists(atPath: target.path) {
+            try FileManager.default.copyItem(at: fileURL, to: target)
+        }
+    }
+
+    var backupsDirectory: URL { URL.applicationSupportDirectory.appendingPathComponent("BrewGUI/Backups", isDirectory: true) }
+
+    /// Volané pri aktivácii aplikácie – zistí, či niekto súbor zmenil zvonku.
+    func checkExternalChanges() {
+        guard let text = try? String(contentsOf: fileURL, encoding: .utf8), text != savedText else { return }
+        if isDirty {
+            externalChangeDetected = true
+        } else {
+            loadFile(fileURL)
+        }
+    }
+
+    func openPanel() {
+        let panel = NSOpenPanel()
+        panel.title = "Otvoriť Brewfile"
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.showsHiddenFiles = true
+        panel.directoryURL = fileURL.deletingLastPathComponent()
+        if panel.runModal() == .OK, let url = panel.url { loadFile(url) }
+    }
+
+    // MARK: - Úpravy
+
+    func add(_ entry: BrewfileEntry) {
+        brewfile.add(entry)
+    }
+
+    func update(_ entry: BrewfileEntry) {
+        brewfile.update(entry)
+    }
+
+    func remove(ids: Set<UUID>) {
+        brewfile.remove(ids: ids)
+    }
+
+    func addToBrewfile(kind: EntryKind, name: String) {
+        guard !brewfile.contains(kind: kind, name: name) else { return }
+        brewfile.add(BrewfileEntry(kind: kind, name: name))
+    }
+
+    // MARK: - Stav
+
+    func refreshAll() async {
+        async let a: Void = refreshInstalled()
+        async let b: Void = refreshOutdated()
+        async let c: Void = loadNames()
+        _ = await (a, b, c)
+    }
+
+    func refreshInstalled() async {
+        guard let client, !loadingInstalled else { return }
+        loadingInstalled = true
+        defer { loadingInstalled = false }
+        do {
+            installed = try await client.installedState()
+            installedLoaded = true
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func refreshOutdated() async {
+        guard let client, !loadingOutdated else { return }
+        loadingOutdated = true
+        defer { loadingOutdated = false }
+        do {
+            outdated = try await client.outdated(greedy: greedyOutdated)
+            outdatedLoaded = true
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func loadNames() async {
+        guard let client, allFormulae.isEmpty else { return }
+        if let names = try? await client.allNames() {
+            allFormulae = names.formulae
+            allCasks = names.casks
+        }
+    }
+
+    func status(of entry: BrewfileEntry) -> EntryStatus {
+        installedLoaded ? installed.status(of: entry) : .unknown
+    }
+
+    var missingEntries: [BrewfileEntry] {
+        guard installedLoaded else { return [] }
+        return brewfile.entries.filter { status(of: $0) == .missing }
+    }
+
+    /// Nainštalované balíky (na požiadanie), tapy a appky, ktoré v Brewfile nie sú.
+    var unmanaged: [UnmanagedItem] {
+        guard installedLoaded else { return [] }
+        let entries = brewfile.entries
+        func listed(_ kind: EntryKind, _ names: [String]) -> Bool {
+            let keys = Set(names.map { $0.lowercased() })
+            return entries.contains { $0.kind == kind && (keys.contains($0.name.lowercased()) || keys.contains($0.shortName.lowercased())) }
+        }
+        var items: [UnmanagedItem] = []
+        for tap in installed.taps.sorted() where !listed(.tap, [tap]) {
+            items.append(UnmanagedItem(kind: .tap, name: tap, desc: nil, version: nil))
+        }
+        for f in installed.formulae where f.isInstalledOnRequest {
+            let names = [f.name, f.fullName] + (f.aliases ?? []) + (f.oldnames ?? [])
+            if !listed(.brew, names) {
+                items.append(UnmanagedItem(kind: .brew, name: f.fullName, desc: f.desc, version: f.installedVersion))
+            }
+        }
+        for c in installed.casks {
+            if !listed(.cask, [c.token, c.fullToken] + (c.oldTokens ?? [])) {
+                items.append(UnmanagedItem(kind: .cask, name: c.fullToken, desc: c.desc, version: c.installed))
+            }
+        }
+        if let mas = installed.masApps {
+            let ids = Set(entries.compactMap(\.masID))
+            for app in mas.values.sorted(by: { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) where !ids.contains(app.id) {
+                items.append(UnmanagedItem(kind: .mas, name: app.name, desc: "App Store ID \(app.id)", version: app.version, masID: app.id))
+            }
+        }
+        return items
+    }
+
+    // MARK: - Spúšťanie brew príkazov
+
+    /// Skript pre `sudo -A` – heslo zadá používateľ do systémového dialógu.
+    @ObservationIgnored private lazy var askpassURL: URL? = {
+        let dir = URL.applicationSupportDirectory.appendingPathComponent("BrewGUI", isDirectory: true)
+        let url = dir.appendingPathComponent("askpass.sh")
+        let script = """
+        #!/bin/sh
+        exec /usr/bin/osascript -e 'text returned of (display dialog "Homebrew potrebuje heslo správcu na dokončenie inštalácie:" with title "Brew GUI" default answer "" with hidden answer with icon caution)'
+        """
+        do {
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            try script.write(to: url, atomically: true, encoding: .utf8)
+            try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: url.path)
+            return url
+        } catch {
+            return nil
+        }
+    }()
+
+    /// Spustí `brew <args>` so živým výstupom v konzole; po dokončení obnoví stav.
+    @discardableResult
+    func run(_ title: String, _ args: [String], refresh: Bool = true, onFinish: (@MainActor (Bool) -> Void)? = nil) -> Job? {
+        guard let client else {
+            errorMessage = "Homebrew sa nenašiel."
+            return nil
+        }
+        let job = Job(title: title, command: "brew " + args.map(shellQuote).joined(separator: " "))
+        jobs.append(job)
+        if jobs.count > 30 { jobs.removeFirst(jobs.count - 30) }
+        job.lines.append("$ " + job.command)
+
+        let stream = client.stream(args, askpass: askpassURL)
+        job.task = Task { [weak self] in
+            do {
+                for try await event in stream {
+                    switch event {
+                    case .output(let line): job.lines.append(line)
+                    case .exit(let code): job.state = code == 0 ? .succeeded : .failed(code)
+                    }
+                }
+                if Task.isCancelled { job.state = .cancelled }
+            } catch {
+                job.lines.append("Chyba: \(error.localizedDescription)")
+                job.state = Task.isCancelled ? .cancelled : .failed(-1)
+            }
+            if job.state == .running { job.state = .cancelled }
+            if job.state != .succeeded { self?.consoleExpanded = true }
+            onFinish?(job.state == .succeeded)
+            if refresh {
+                await self?.refreshInstalled()
+                await self?.refreshOutdated()
+            }
+        }
+        return job
+    }
+
+    func cancel(_ job: Job) {
+        job.task?.cancel()
+    }
+
+    func clearFinishedJobs() {
+        jobs.removeAll { !$0.isRunning }
+    }
+
+    private func shellQuote(_ arg: String) -> String {
+        arg.allSatisfy({ $0.isLetter || $0.isNumber || "-_./=@:+".contains($0) }) ? arg : "'\(arg.replacingOccurrences(of: "'", with: "'\\''"))'"
+    }
+
+    // MARK: - Konkrétne operácie
+
+    func install(_ entry: BrewfileEntry) {
+        switch entry.kind {
+        case .tap: run("Tap \(entry.name)", ["tap", entry.name])
+        case .brew: run("Inštalácia \(entry.name)", ["install", "--formula", entry.name])
+        case .cask: run("Inštalácia \(entry.name)", ["install", "--cask", entry.name])
+        case .mas:
+            if let id = entry.masID { runMas("Inštalácia \(entry.name)", ["install", id]) }
+        default: break
+        }
+    }
+
+    func install(kind: EntryKind, name: String) {
+        install(BrewfileEntry(kind: kind, name: name))
+    }
+
+    func uninstall(kind: EntryKind, name: String) {
+        switch kind {
+        case .tap: run("Untap \(name)", ["untap", name])
+        case .brew: run("Odinštalovanie \(name)", ["uninstall", "--formula", name])
+        case .cask: run("Odinštalovanie \(name)", ["uninstall", "--cask", name])
+        case .mas: runMas("Odinštalovanie \(name)", ["uninstall", name])
+        default: break
+        }
+    }
+
+    func upgrade(_ packages: [OutdatedPackage]) {
+        let formulae = packages.filter { !$0.isCask }.map(\.name)
+        let casks = packages.filter(\.isCask).map(\.name)
+        if !formulae.isEmpty { run("Upgrade (\(formulae.count) formulae)", ["upgrade", "--formula"] + formulae) }
+        if !casks.isEmpty { run("Upgrade (\(casks.count) casks)", ["upgrade", "--cask"] + (greedyOutdated ? ["--greedy"] : []) + casks) }
+    }
+
+    func upgradeAll() {
+        run("Upgrade všetkého", ["upgrade"] + (greedyOutdated ? ["--greedy"] : []))
+    }
+
+    func brewUpdate() {
+        run("brew update", ["update"])
+    }
+
+    func bundleCheck() {
+        run("Kontrola Brewfile", ["bundle", "check", "--verbose", "--file=\(fileURL.path)"], refresh: false)
+    }
+
+    func bundleInstall(upgrade: Bool) {
+        var args = ["bundle", "install", "--file=\(fileURL.path)"]
+        if !upgrade { args.append("--no-upgrade") }
+        run("Inštalácia z Brewfile", args)
+    }
+
+    func bundleCleanup() {
+        run("Upratanie podľa Brewfile", ["bundle", "cleanup", "--force", "--file=\(fileURL.path)"])
+    }
+
+    func bundleDump(to url: URL, describe: Bool) {
+        var args = ["bundle", "dump", "--force", "--file=\(url.path)"]
+        if describe { args.append("--describe") }
+        run("Export stavu do \(url.lastPathComponent)", args, refresh: false)
+    }
+
+    /// `mas` beží cez rovnaký mechanizmus – spúšťame ho cez `brew` prostredie ako externý príkaz.
+    private func runMas(_ title: String, _ args: [String]) {
+        guard let client else { return }
+        let mas = client.brewURL.deletingLastPathComponent().appendingPathComponent("mas")
+        guard FileManager.default.isExecutableFile(atPath: mas.path) else {
+            errorMessage = "Na správu App Store aplikácií treba `mas` (brew install mas)."
+            return
+        }
+        let job = Job(title: title, command: "mas " + args.joined(separator: " "))
+        jobs.append(job)
+        job.lines.append("$ " + job.command)
+        let stream = ProcessRunner.stream(executable: mas, arguments: args, environment: client.environment(quiet: true))
+        job.task = Task { [weak self] in
+            do {
+                for try await event in stream {
+                    switch event {
+                    case .output(let line): job.lines.append(line)
+                    case .exit(let code): job.state = code == 0 ? .succeeded : .failed(code)
+                    }
+                }
+            } catch {
+                job.lines.append("Chyba: \(error.localizedDescription)")
+                job.state = .failed(-1)
+            }
+            if job.state == .running { job.state = .cancelled }
+            await self?.refreshInstalled()
+        }
+    }
+
+    func cleanupPreview() async -> CleanupPreview? {
+        guard let client else { return nil }
+        do {
+            return try await client.cleanupPreview(file: fileURL)
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+
+    func info(kind: EntryKind, name: String) async throws -> PackageInfo {
+        guard let client else { throw CommandError(command: "brew", status: -1, stderr: "Homebrew sa nenašiel.") }
+        return try await client.info(kind: kind, name: name)
+    }
+}
+
+struct UnmanagedItem: Identifiable, Hashable {
+    var kind: EntryKind
+    var name: String
+    var desc: String?
+    var version: String?
+    var masID: String? = nil
+    var id: String { "\(kind.rawValue):\(masID ?? name)" }
+}
