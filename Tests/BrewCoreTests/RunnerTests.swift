@@ -40,3 +40,21 @@ import Testing
         #expect(apps.count == 3)
     }
 }
+
+@Suite struct InstalledStateTests {
+    @Test func qualifiedNamesMatchExactly() {
+        let index = ["whisky": 1, "frankea/whisky/whisky": 2, "git": 3]
+        #expect(InstalledState.lookup("frankea/whisky/whisky", in: index) == 2)
+        #expect(InstalledState.lookup("other/tap/whisky", in: index) == nil)
+        #expect(InstalledState.lookup("homebrew/core/git", in: index) == 3)
+        #expect(InstalledState.lookup("Whisky", in: index) == 1)
+    }
+
+    @Test func deprecationText() {
+        #expect(Deprecation.warning(deprecated: false, reason: nil, disabled: nil, disableReason: nil, replacement: nil) == nil)
+        #expect(Deprecation.warning(deprecated: true, reason: "unmaintained", disabled: false, disableReason: nil, replacement: "foo")
+                == "Nepodporované (deprecated): projekt sa už nevyvíja. Náhrada: foo")
+        #expect(Deprecation.warning(deprecated: true, reason: nil, disabled: true, disableReason: "repo_archived", replacement: nil)
+                == "Vypnuté v Homebrew: repozitár je archivovaný")
+    }
+}

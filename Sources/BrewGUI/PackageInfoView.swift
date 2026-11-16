@@ -51,6 +51,14 @@ struct PackageInfoView: View {
                     }
                 }
 
+                if let warning = info.lifecycleWarning {
+                    Label(warning, systemImage: "exclamationmark.octagon.fill")
+                        .foregroundStyle(.red)
+                        .padding(8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.red.opacity(0.1), in: RoundedRectangle(cornerRadius: 6))
+                }
+
                 actions(info)
 
                 Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {

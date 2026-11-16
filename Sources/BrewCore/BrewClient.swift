@@ -24,9 +24,50 @@ public struct FormulaInfo: Decodable, Sendable, Hashable {
     public var outdated: Bool?
     public var pinned: Bool?
     public var kegOnly: Bool?
+    public var deprecated: Bool?
+    public var deprecationReason: String?
+    public var deprecationReplacementFormula: String?
+    public var deprecationReplacementCask: String?
+    public var disabled: Bool?
+    public var disableReason: String?
 
     public var installedVersion: String? { installed.last?.version }
     public var isInstalledOnRequest: Bool { installed.contains { $0.installedOnRequest == true } }
+
+    public var lifecycleWarning: String? {
+        Deprecation.warning(
+            deprecated: deprecated, reason: deprecationReason, disabled: disabled, disableReason: disableReason,
+            replacement: deprecationReplacementFormula ?? deprecationReplacementCask
+        )
+    }
+}
+
+/// Text upozornenia pre balíky, ktoré Homebrew označil ako deprecated / disabled.
+enum Deprecation {
+    static func warning(deprecated: Bool?, reason: String?, disabled: Bool?, disableReason: String?, replacement: String?) -> String? {
+        let isDisabled = disabled == true
+        guard isDisabled || deprecated == true else { return nil }
+        var text = isDisabled ? "Vypnuté v Homebrew" : "Nepodporované (deprecated)"
+        if let why = (isDisabled ? disableReason : reason).map(translate), !why.isEmpty { text += ": \(why)" }
+        if let replacement, !replacement.isEmpty { text += ". Náhrada: \(replacement)" }
+        return text
+    }
+
+    static func translate(_ reason: String) -> String {
+        switch reason {
+        case "unmaintained", "is not maintained upstream": "projekt sa už nevyvíja"
+        case "discontinued": "projekt bol ukončený"
+        case "does_not_build": "nedá sa zostaviť"
+        case "repo_archived": "repozitár je archivovaný"
+        case "repo_removed": "repozitár bol odstránený"
+        case "no_license": "chýba licencia"
+        case "checksum_mismatch": "nesedí kontrolný súčet"
+        case "fails_gatekeeper_check": "neprejde kontrolou Gatekeeper"
+        case "unsigned": "aplikácia nie je podpísaná"
+        case "versioned_formula": "verzovaná formula už nie je podporovaná"
+        default: reason.replacingOccurrences(of: "_", with: " ")
+        }
+    }
 }
 
 public struct CaskInfo: Decodable, Sendable, Hashable {
@@ -42,6 +83,19 @@ public struct CaskInfo: Decodable, Sendable, Hashable {
     public var caveats: String?
     public var outdated: Bool?
     public var autoUpdates: Bool?
+    public var deprecated: Bool?
+    public var deprecationReason: String?
+    public var deprecationReplacementCask: String?
+    public var deprecationReplacementFormula: String?
+    public var disabled: Bool?
+    public var disableReason: String?
+
+    public var lifecycleWarning: String? {
+        Deprecation.warning(
+            deprecated: deprecated, reason: deprecationReason, disabled: disabled, disableReason: disableReason,
+            replacement: deprecationReplacementCask ?? deprecationReplacementFormula
+        )
+    }
 }
 
 struct InfoResponse: Decodable {
@@ -108,6 +162,12 @@ public enum PackageInfo: Sendable, Hashable {
         case .cask: .cask
         }
     }
+    public var lifecycleWarning: String? {
+        switch self {
+        case .formula(let f): f.lifecycleWarning
+        case .cask(let c): c.lifecycleWarning
+        }
+    }
 }
 
 // MARK: - Outdated
@@ -163,13 +223,29 @@ public struct InstalledState: Sendable {
     }
 
     public func formula(named name: String) -> FormulaInfo? {
-        let key = name.lowercased()
-        return formulaIndex[key] ?? formulaIndex[key.split(separator: "/").last.map(String.init) ?? key]
+        Self.lookup(name, in: formulaIndex)
     }
 
     public func cask(named name: String) -> CaskInfo? {
+        Self.lookup(name, in: caskIndex)
+    }
+
+    /// `user/tap/foo` musí sedieť presne – inak by sa `frankea/whisky/whisky` zamenil s oficiálnym `whisky`.
+    /// Krátky názov skúšame len pri oficiálnych tapoch (`homebrew/cask/foo`).
+    static func lookup<T>(_ name: String, in index: [String: T]) -> T? {
         let key = name.lowercased()
-        return caskIndex[key] ?? caskIndex[key.split(separator: "/").last.map(String.init) ?? key]
+        if let exact = index[key] { return exact }
+        let parts = key.split(separator: "/")
+        guard parts.count == 3, parts[0] == "homebrew" else { return nil }
+        return index[String(parts[2])]
+    }
+
+    public func lifecycleWarning(of entry: BrewfileEntry) -> String? {
+        switch entry.kind {
+        case .brew: formula(named: entry.name)?.lifecycleWarning
+        case .cask: cask(named: entry.name)?.lifecycleWarning
+        default: nil
+        }
     }
 
     public func hasTap(_ name: String) -> Bool {

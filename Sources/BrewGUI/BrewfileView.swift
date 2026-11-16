@@ -6,6 +6,7 @@ struct EntryRow: Identifiable {
     let status: EntryStatus
     let desc: String
     let isDuplicate: Bool
+    let warning: String?
     let fileOrder: Int
 
     var id: UUID { entry.id }
@@ -73,6 +74,7 @@ struct BrewfileView: View {
                 status: model.status(of: entry),
                 desc: model.installed.description(of: entry) ?? "",
                 isDuplicate: duplicates.contains(entry.id),
+                warning: model.installed.lifecycleWarning(of: entry),
                 fileOrder: index
             )
         }
@@ -117,6 +119,14 @@ struct BrewfileView: View {
                                 .padding(.horizontal, 4)
                                 .background(.orange.opacity(0.2), in: Capsule())
                                 .foregroundStyle(.orange)
+                        }
+                        if let warning = row.warning {
+                            Text("nepodporované")
+                                .font(.caption2)
+                                .padding(.horizontal, 4)
+                                .background(.red.opacity(0.18), in: Capsule())
+                                .foregroundStyle(.red)
+                                .help(warning)
                         }
                     }
                 }
@@ -339,6 +349,7 @@ struct BrewfileSummary: View {
                 LabeledContent("Chýbajúce", value: "\(statuses.filter { $0 == .missing }.count)")
                 LabeledContent("Zastarané", value: "\(statuses.filter { if case .outdated = $0 { true } else { false } }.count)")
                 LabeledContent("Duplicity", value: "\(model.brewfile.duplicateIDs.count)")
+                LabeledContent("Nepodporované", value: "\(entries.filter { model.installed.lifecycleWarning(of: $0) != nil }.count)")
             }
             Section {
                 Button("Otvoriť iný Brewfile…") { model.openPanel() }
