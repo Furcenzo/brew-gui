@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.undoManager) private var undoManager
 
     var body: some View {
         @Bindable var model = model
@@ -35,10 +36,12 @@ struct ContentView: View {
         }
         .alert("Brewfile sa zmenil na disku", isPresented: $model.externalChangeDetected) {
             Button("Načítať zo súboru", role: .destructive) { model.reloadFile() }
-            Button("Ponechať moje úpravy", role: .cancel) {}
+            Button("Prepísať mojimi úpravami", role: .cancel) { model.save() }
         } message: {
-            Text("Súbor upravil iný program, ale máte tu neuložené zmeny. Načítaním zo súboru o ne prídete.")
+            Text("Súbor upravil iný program, ale máte tu ešte neuložené zmeny. Načítaním zo súboru o ne prídete.")
         }
+        .onAppear { model.undoManager = undoManager }
+        .onChange(of: undoManager.map(ObjectIdentifier.init)) { model.undoManager = undoManager }
     }
 
     @ViewBuilder private var detail: some View {

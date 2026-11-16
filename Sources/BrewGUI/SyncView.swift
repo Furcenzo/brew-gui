@@ -26,8 +26,8 @@ struct SyncView: View {
             } header: {
                 Text("Stav")
             } footer: {
-                if model.isDirty {
-                    Label("Brewfile má neuložené zmeny – pred synchronizáciou sa uloží.", systemImage: "exclamationmark.triangle")
+                if model.externalChangeDetected {
+                    Label("Brewfile zmenil iný program – pred synchronizáciou sa prepíše vašimi úpravami.", systemImage: "exclamationmark.triangle")
                         .foregroundStyle(.orange)
                 }
             }

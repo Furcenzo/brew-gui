@@ -124,7 +124,7 @@ struct UnmanagedView: View {
                     Label("Pridať do Brewfile", systemImage: "text.badge.plus")
                 }
                 .disabled(selection.isEmpty)
-                .help("Zapísať vybrané do Brewfile (potom treba uložiť)")
+                .help("Zapísať vybrané do Brewfile")
 
                 Button(role: .destructive) {
                     pendingUninstall = items.filter { selection.contains($0.id) }

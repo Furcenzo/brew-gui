@@ -42,8 +42,17 @@ final class AppModel {
 
     // Brewfile
     private(set) var fileURL: URL
-    var brewfile = Brewfile()
+    /// Každá zmena sa zaregistruje do Undo (⌘Z) a po chvíľke sa automaticky uloží.
+    var brewfile = Brewfile() {
+        didSet { brewfileDidChange(from: oldValue) }
+    }
     private(set) var savedText = ""
+    @ObservationIgnored weak var undoManager: UndoManager?
+    @ObservationIgnored private var trackChanges = true
+    @ObservationIgnored private var registerUndo = true
+    @ObservationIgnored private var autosaveTask: Task<Void, Never>?
+    /// Súbor, ktorý sme v tejto session už zálohovali (záloha = stav pred prvým uložením).
+    @ObservationIgnored private var backedUpFile: URL?
     var isDirty: Bool { brewfile.text != savedText }
     var externalChangeDetected = false
 
@@ -84,9 +93,14 @@ final class AppModel {
     func loadFile(_ url: URL) {
         do {
             let text = FileManager.default.fileExists(atPath: url.path) ? try String(contentsOf: url, encoding: .utf8) : ""
+            autosaveTask?.cancel()
+            if url != fileURL { backedUpFile = nil }
             fileURL = url
+            trackChanges = false
             brewfile = Brewfile(parsing: text)
+            trackChanges = true
             savedText = brewfile.text
+            undoManager?.removeAllActions()
             externalChangeDetected = false
             UserDefaults.standard.set(url.path, forKey: "lastBrewfile")
         } catch {
@@ -96,9 +110,38 @@ final class AppModel {
 
     func reloadFile() { loadFile(fileURL) }
 
+    private func brewfileDidChange(from old: Brewfile) {
+        guard trackChanges, old.text != brewfile.text else { return }
+        if registerUndo, let undoManager {
+            undoManager.registerUndo(withTarget: self) { model in
+                MainActor.assumeIsolated { model.brewfile = old }
+            }
+            undoManager.setActionName("úprava Brewfile")
+        }
+        // Zmeny zvonku, ktoré ešte nie sú uložené, by sme autosave-om prepísali – vtedy čakáme na rozhodnutie.
+        guard !externalChangeDetected else { return }
+        autosaveTask?.cancel()
+        autosaveTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !Task.isCancelled, let self, self.isDirty else { return }
+            self.save()
+        }
+    }
+
+    /// Zmena z textového editora – undo rieši samotný editor.
+    func setTextFromEditor(_ text: String) {
+        registerUndo = false
+        brewfile = Brewfile(parsing: text)
+        registerUndo = true
+    }
+
     func save() {
+        autosaveTask?.cancel()
         do {
-            try backupCurrentFile()
+            if backedUpFile != fileURL {
+                try backupCurrentFile()
+                backedUpFile = fileURL
+            }
             try brewfile.text.write(to: fileURL, atomically: true, encoding: .utf8)
             savedText = brewfile.text
             externalChangeDetected = false
@@ -107,12 +150,15 @@ final class AppModel {
         }
     }
 
-    /// Pred prepísaním odloží pôvodný súbor do ~/Library/Application Support/BrewGUI/Backups.
+    /// Pred prvým uložením v session odloží pôvodný súbor do ~/Library/Application Support/BrewGUI/Backups.
     private func backupCurrentFile() throws {
         guard FileManager.default.fileExists(atPath: fileURL.path) else { return }
         let dir = URL.applicationSupportDirectory.appendingPathComponent("BrewGUI/Backups", isDirectory: true)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        let stamp = Date().formatted(.iso8601.year().month().day().time(includingFractionalSeconds: false).timeSeparator(.omitted))
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd'T'HHmmss"
+        let stamp = formatter.string(from: Date())
         let target = dir.appendingPathComponent("\(fileURL.lastPathComponent)-\(stamp)")
         if !FileManager.default.fileExists(atPath: target.path) {
             try FileManager.default.copyItem(at: fileURL, to: target)

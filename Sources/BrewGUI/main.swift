@@ -17,6 +17,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func scheduleDebugSnapshot() {
         let env = ProcessInfo.processInfo.environment
         guard let path = env["BREWGUI_SNAPSHOT"] else { return }
+        if let file = env["BREWGUI_FILE"] { model.loadFile(URL(fileURLWithPath: file)) }
+        if let name = env["BREWGUI_DEBUG_ADD"] {
+            // simulácia úpravy: pridanie položky, voliteľne po 2 s ⌘Z
+            model.addToBrewfile(kind: .brew, name: name)
+            if env["BREWGUI_DEBUG_UNDO"] != nil {
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(2))
+                    model.undoManager?.undo()
+                }
+            }
+        }
         switch env["BREWGUI_PAGE"] {
         case "sync": model.sidebarSelection = .sync
         case "outdated": model.sidebarSelection = .outdated
@@ -56,22 +67,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             alert.addButton(withTitle: "Ukončiť")
             if alert.runModal() == .alertFirstButtonReturn { return .terminateCancel }
         }
+        // Zmeny sa ukladajú automaticky; dočasne neuložené (posledných pár stotín sekundy) uložíme bez pýtania.
         guard model.isDirty else { return .terminateNow }
-        let alert = NSAlert()
-        alert.messageText = "Uložiť zmeny v Brewfile?"
-        alert.informativeText = model.fileURL.path
-        alert.addButton(withTitle: "Uložiť")
-        alert.addButton(withTitle: "Zrušiť")
-        alert.addButton(withTitle: "Neukladať")
-        switch alert.runModal() {
-        case .alertFirstButtonReturn:
-            model.save()
-            return model.isDirty ? .terminateCancel : .terminateNow
-        case .alertSecondButtonReturn:
-            return .terminateCancel
-        default:
-            return .terminateNow
+        if model.externalChangeDetected {
+            let alert = NSAlert()
+            alert.messageText = "Brewfile medzitým zmenil iný program"
+            alert.informativeText = "Máte tu zmeny, ktoré ešte nie sú uložené. Prepísať nimi súbor na disku?"
+            alert.addButton(withTitle: "Prepísať")
+            alert.addButton(withTitle: "Zrušiť")
+            alert.addButton(withTitle: "Ponechať súbor na disku")
+            switch alert.runModal() {
+            case .alertFirstButtonReturn: break
+            case .alertSecondButtonReturn: return .terminateCancel
+            default: return .terminateNow
+            }
         }
+        model.save()
+        return model.isDirty ? .terminateCancel : .terminateNow
     }
 }
 

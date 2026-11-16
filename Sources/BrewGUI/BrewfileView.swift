@@ -18,6 +18,7 @@ struct EntryRow: Identifiable {
 
 struct BrewfileView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.undoManager) private var undoManager
     let kindFilter: EntryKind?
     let missingOnly: Bool
 
@@ -191,7 +192,7 @@ struct BrewfileView: View {
         @Bindable var model = model
         return TextEditor(text: Binding(
             get: { model.brewfile.text },
-            set: { model.brewfile = Brewfile(parsing: $0) }
+            set: { model.setTextFromEditor($0) }
         ))
         .font(.system(.body, design: .monospaced))
         .scrollContentBackground(.hidden)
@@ -250,20 +251,12 @@ struct BrewfileView: View {
         }
         ToolbarItemGroup {
             Button {
-                model.reloadFile()
+                undoManager?.undo()
             } label: {
-                Label("Zahodiť zmeny", systemImage: "arrow.uturn.backward")
+                Label("Späť", systemImage: "arrow.uturn.backward")
             }
-            .disabled(!model.isDirty)
-            .help("Znovu načítať súbor z disku")
-
-            Button {
-                model.save()
-            } label: {
-                Label("Uložiť", systemImage: "square.and.arrow.down")
-            }
-            .disabled(!model.isDirty)
-            .help("Uložiť Brewfile (⌘S)")
+            .disabled(mode == .text)
+            .help("Vrátiť poslednú úpravu (⌘Z). Zmeny sa ukladajú automaticky.")
 
             Button {
                 showInspector.toggle()
