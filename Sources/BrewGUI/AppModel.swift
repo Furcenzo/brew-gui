@@ -123,7 +123,7 @@ final class AppModel {
             externalChangeDetected = false
             UserDefaults.standard.set(url.path, forKey: "lastBrewfile")
         } catch {
-            errorMessage = "Brewfile sa nepodarilo načítať: \(error.localizedDescription)"
+            errorMessage = String(localized: "Couldn't load the Brewfile: \(error.localizedDescription)")
         }
     }
 
@@ -135,7 +135,7 @@ final class AppModel {
             undoManager.registerUndo(withTarget: self) { model in
                 MainActor.assumeIsolated { model.brewfile = old }
             }
-            undoManager.setActionName("úprava Brewfile")
+            undoManager.setActionName(String(localized: "Brewfile Edit"))
         }
         // Zmeny zvonku, ktoré ešte nie sú uložené, by sme autosave-om prepísali – vtedy čakáme na rozhodnutie.
         guard !externalChangeDetected else { return }
@@ -165,7 +165,7 @@ final class AppModel {
             savedText = brewfile.text
             externalChangeDetected = false
         } catch {
-            errorMessage = "Brewfile sa nepodarilo uložiť: \(error.localizedDescription)"
+            errorMessage = String(localized: "Couldn't save the Brewfile: \(error.localizedDescription)")
         }
     }
 
@@ -198,7 +198,7 @@ final class AppModel {
 
     func openPanel() {
         let panel = NSOpenPanel()
-        panel.title = "Otvoriť Brewfile"
+        panel.title = String(localized: "Open Brewfile")
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
         panel.showsHiddenFiles = true
@@ -238,7 +238,7 @@ final class AppModel {
     /// Počas bežiacej operácie sa neobnovuje (urobí sa po jej skončení) a najviac raz za 10 s.
     func refreshOnActivation() {
         guard client != nil, !isBusy, Date().timeIntervalSince(lastStateRefresh) > 10 else { return }
-        log.notice("Obnovujem stav po aktivácii aplikácie")
+        log.notice("Refreshing status after app activation")
         Task {
             await refreshInstalled()
             await refreshOutdated()
@@ -325,9 +325,11 @@ final class AppModel {
     @ObservationIgnored private lazy var askpassURL: URL? = {
         let dir = URL.applicationSupportDirectory.appendingPathComponent("BrewGUI", isDirectory: true)
         let url = dir.appendingPathComponent("askpass.sh")
+        let prompt = String(localized: "Homebrew needs an administrator password to finish the installation:")
+            .replacingOccurrences(of: "\"", with: "").replacingOccurrences(of: "'", with: "’")
         let script = """
         #!/bin/sh
-        exec /usr/bin/osascript -e 'text returned of (display dialog "Homebrew potrebuje heslo správcu na dokončenie inštalácie:" with title "Brew GUI" default answer "" with hidden answer with icon caution)'
+        exec /usr/bin/osascript -e 'text returned of (display dialog "\(prompt)" with title "Brew GUI" default answer "" with hidden answer with icon caution)'
         """
         do {
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -343,7 +345,7 @@ final class AppModel {
     @discardableResult
     func run(_ title: String, _ args: [String], refresh: Bool = true, onFinish: (@MainActor (Bool) -> Void)? = nil) -> Job? {
         guard let client else {
-            errorMessage = "Homebrew sa nenašiel."
+            errorMessage = String(localized: "Homebrew not found.")
             return nil
         }
         let job = Job(title: title, command: "brew " + args.map(shellQuote).joined(separator: " "))
@@ -362,7 +364,7 @@ final class AppModel {
                 }
                 if Task.isCancelled { job.state = .cancelled }
             } catch {
-                job.lines.append("Chyba: \(error.localizedDescription)")
+                job.lines.append(String(localized: "Error: \(error.localizedDescription)"))
                 job.state = Task.isCancelled ? .cancelled : .failed(-1)
             }
             if job.state == .running { job.state = .cancelled }
@@ -393,10 +395,10 @@ final class AppModel {
     func install(_ entry: BrewfileEntry) {
         switch entry.kind {
         case .tap: run("Tap \(entry.name)", ["tap", entry.name])
-        case .brew: run("Inštalácia \(entry.name)", ["install", "--formula", entry.name])
-        case .cask: run("Inštalácia \(entry.name)", ["install", "--cask", entry.name])
+        case .brew: run(String(localized: "Installing \(entry.name)"), ["install", "--formula", entry.name])
+        case .cask: run(String(localized: "Installing \(entry.name)"), ["install", "--cask", entry.name])
         case .mas:
-            if let id = entry.masID { runMas("Inštalácia \(entry.name)", ["install", id]) }
+            if let id = entry.masID { runMas(String(localized: "Installing \(entry.name)"), ["install", id]) }
         default: break
         }
     }
@@ -408,9 +410,9 @@ final class AppModel {
     func uninstall(kind: EntryKind, name: String) {
         switch kind {
         case .tap: run("Untap \(name)", ["untap", name])
-        case .brew: run("Odinštalovanie \(name)", ["uninstall", "--formula", name])
-        case .cask: run("Odinštalovanie \(name)", ["uninstall", "--cask", name])
-        case .mas: runMas("Odinštalovanie \(name)", ["uninstall", name])
+        case .brew: run(String(localized: "Uninstalling \(name)"), ["uninstall", "--formula", name])
+        case .cask: run(String(localized: "Uninstalling \(name)"), ["uninstall", "--cask", name])
+        case .mas: runMas(String(localized: "Uninstalling \(name)"), ["uninstall", name])
         default: break
         }
     }
@@ -423,7 +425,7 @@ final class AppModel {
     }
 
     func upgradeAll() {
-        run("Upgrade všetkého", ["upgrade"] + (greedyOutdated ? ["--greedy"] : []))
+        run(String(localized: "Upgrading Everything"), ["upgrade"] + (greedyOutdated ? ["--greedy"] : []))
     }
 
     func brewUpdate() {
@@ -431,23 +433,23 @@ final class AppModel {
     }
 
     func bundleCheck() {
-        run("Kontrola Brewfile", ["bundle", "check", "--verbose", "--file=\(fileURL.path)"], refresh: false)
+        run(String(localized: "Checking Brewfile"), ["bundle", "check", "--verbose", "--file=\(fileURL.path)"], refresh: false)
     }
 
     func bundleInstall(upgrade: Bool) {
         var args = ["bundle", "install", "--file=\(fileURL.path)"]
         if !upgrade { args.append("--no-upgrade") }
-        run("Inštalácia z Brewfile", args)
+        run(String(localized: "Installing from Brewfile"), args)
     }
 
     func bundleCleanup() {
-        run("Upratanie podľa Brewfile", ["bundle", "cleanup", "--force", "--file=\(fileURL.path)"])
+        run(String(localized: "Brewfile Cleanup"), ["bundle", "cleanup", "--force", "--file=\(fileURL.path)"])
     }
 
     func bundleDump(to url: URL, describe: Bool) {
         var args = ["bundle", "dump", "--force", "--file=\(url.path)"]
         if describe { args.append("--describe") }
-        run("Export stavu do \(url.lastPathComponent)", args, refresh: false)
+        run(String(localized: "Exporting State to \(url.lastPathComponent)"), args, refresh: false)
     }
 
     /// `mas` beží cez rovnaký mechanizmus – spúšťame ho cez `brew` prostredie ako externý príkaz.
@@ -455,7 +457,7 @@ final class AppModel {
         guard let client else { return }
         let mas = client.brewURL.deletingLastPathComponent().appendingPathComponent("mas")
         guard FileManager.default.isExecutableFile(atPath: mas.path) else {
-            errorMessage = "Na správu App Store aplikácií treba `mas` (brew install mas)."
+            errorMessage = String(localized: "Managing App Store apps requires `mas` (brew install mas).")
             return
         }
         let job = Job(title: title, command: "mas " + args.joined(separator: " "))
@@ -471,7 +473,7 @@ final class AppModel {
                     }
                 }
             } catch {
-                job.lines.append("Chyba: \(error.localizedDescription)")
+                job.lines.append(String(localized: "Error: \(error.localizedDescription)"))
                 job.state = .failed(-1)
             }
             if job.state == .running { job.state = .cancelled }
@@ -490,7 +492,7 @@ final class AppModel {
     }
 
     func info(kind: EntryKind, name: String) async throws -> PackageInfo {
-        guard let client else { throw CommandError(command: "brew", status: -1, stderr: "Homebrew sa nenašiel.") }
+        guard let client else { throw CommandError(command: "brew", status: -1, stderr: String(localized: "Homebrew not found.")) }
         return try await client.info(kind: kind, name: name)
     }
 }

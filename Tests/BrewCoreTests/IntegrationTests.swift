@@ -11,7 +11,7 @@ struct IntegrationTests {
     @Test func deprecatedCaskHasWarning() async throws {
         let client = try #require(BrewClient.locate())
         let official = try await client.info(kind: .cask, name: "whisky")
-        #expect(official.lifecycleWarning?.hasPrefix("Nepodporované") == true)
+        #expect(official.lifecycleWarning?.hasPrefix("Deprecated") == true)
         let fork = try await client.info(kind: .cask, name: "frankea/whisky/whisky")
         #expect(fork.token == "frankea/whisky/whisky")
         #expect(fork.lifecycleWarning == nil)

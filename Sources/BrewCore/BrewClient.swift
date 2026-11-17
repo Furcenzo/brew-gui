@@ -50,24 +50,24 @@ enum Deprecation {
     static func warning(deprecated: Bool?, reason: String?, disabled: Bool?, disableReason: String?, replacement: String?) -> String? {
         let isDisabled = disabled == true
         guard isDisabled || deprecated == true else { return nil }
-        var text = isDisabled ? "Vypnuté v Homebrew" : "Nepodporované (deprecated)"
+        var text = isDisabled ? String(localized: "Disabled in Homebrew") : String(localized: "Deprecated")
         if let why = (isDisabled ? disableReason : reason).map(translate), !why.isEmpty { text += ": \(why)" }
-        if let replacement, !replacement.isEmpty { text += ". Náhrada: \(replacement)" }
+        if let replacement, !replacement.isEmpty { text += ". " + String(localized: "Replacement: \(replacement)") }
         return text
     }
 
     static func translate(_ reason: String) -> String {
         switch reason {
-        case "unmaintained", "is not maintained upstream": "projekt sa už nevyvíja"
-        case "discontinued": "projekt bol ukončený"
-        case "does_not_build": "nedá sa zostaviť"
-        case "repo_archived": "repozitár je archivovaný"
-        case "repo_removed": "repozitár bol odstránený"
-        case "no_license": "chýba licencia"
-        case "checksum_mismatch": "nesedí kontrolný súčet"
-        case "fails_gatekeeper_check": "neprejde kontrolou Gatekeeper"
-        case "unsigned": "aplikácia nie je podpísaná"
-        case "versioned_formula": "verzovaná formula už nie je podporovaná"
+        case "unmaintained", "is not maintained upstream": String(localized: "the project is no longer maintained")
+        case "discontinued": String(localized: "the project has been discontinued")
+        case "does_not_build": String(localized: "it does not build")
+        case "repo_archived": String(localized: "the repository is archived")
+        case "repo_removed": String(localized: "the repository has been removed")
+        case "no_license": String(localized: "it has no license")
+        case "checksum_mismatch": String(localized: "the checksum does not match")
+        case "fails_gatekeeper_check": String(localized: "it fails the Gatekeeper check")
+        case "unsigned": String(localized: "the app is not signed")
+        case "versioned_formula": String(localized: "versioned formulae are no longer supported")
         default: reason.replacingOccurrences(of: "_", with: " ")
         }
     }
@@ -474,7 +474,7 @@ public struct BrewClient: Sendable {
         let response = try Self.decoder.decode(InfoResponse.self, from: Data(text.utf8))
         if let formula = response.formulae.first { return .formula(formula) }
         if let cask = response.casks.first { return .cask(cask) }
-        throw CommandError(command: "brew " + args.joined(separator: " "), status: 0, stderr: "Balík sa nenašiel.")
+        throw CommandError(command: "brew " + args.joined(separator: " "), status: 0, stderr: String(localized: "Package not found."))
     }
 
     public func cleanupPreview(file: URL) async throws -> CleanupPreview {

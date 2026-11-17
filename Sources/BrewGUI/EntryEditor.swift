@@ -35,30 +35,30 @@ struct EntryEditor: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Form {
-                Picker("Typ", selection: $kind) {
+                Picker("Type", selection: $kind) {
                     ForEach(EntryKind.allCases, id: \.self) { kind in
                         Label(kind.title, systemImage: kind.symbol).tag(kind)
                     }
                 }
-                TextField(kind == .mas ? "Názov aplikácie" : "Názov", text: $name, prompt: Text(placeholder))
+                TextField(kind == .mas ? "App Name" : "Name", text: $name, prompt: Text(placeholder))
                     .font(.body.monospaced())
                 if !suggestions.isEmpty {
-                    LabeledContent("Návrhy") {
+                    LabeledContent("Suggestions") {
                         FlowSuggestions(items: suggestions) { name = $0 }
                     }
                 }
                 if kind == .mas {
-                    TextField("App Store ID", text: $masID, prompt: Text("napr. 497799835"))
+                    TextField("App Store ID", text: $masID, prompt: Text("e.g. 497799835"))
                         .font(.body.monospaced())
                 } else {
-                    TextField("Možnosti", text: $options, prompt: Text(optionsPlaceholder))
+                    TextField("Options", text: $options, prompt: Text(optionsPlaceholder))
                         .font(.body.monospaced())
                 }
-                TextField("Komentár", text: $comment, prompt: Text("voliteľné"))
+                TextField("Comment", text: $comment, prompt: Text("optional"))
                 if isNew, kind.isManaged {
-                    Toggle("Hneď aj nainštalovať", isOn: $installNow)
+                    Toggle("Install Right Away", isOn: $installNow)
                 }
-                LabeledContent("Riadok") {
+                LabeledContent("Line") {
                     Text(previewEntry.line)
                         .font(.callout.monospaced())
                         .foregroundStyle(.secondary)
@@ -73,9 +73,9 @@ struct EntryEditor: View {
 
             HStack {
                 Spacer()
-                Button("Zrušiť", role: .cancel) { dismiss() }
+                Button("Cancel", role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)
-                Button(isNew ? "Pridať" : "Uložiť") { commit() }
+                Button(isNew ? "Add" : "Save") { commit() }
                     .keyboardShortcut(.defaultAction)
                     .disabled(trimmedName.isEmpty || (kind == .mas && !masID.allSatisfy(\.isNumber)))
             }
@@ -85,23 +85,23 @@ struct EntryEditor: View {
         .onAppear(perform: load)
     }
 
-    private var placeholder: String {
+    private var placeholder: LocalizedStringKey {
         switch kind {
         case .tap: "user/repo"
-        case .brew: "napr. ripgrep alebo user/tap/formula"
-        case .cask: "napr. visual-studio-code"
-        case .mas: "napr. Xcode"
-        case .vscode: "napr. ms-python.python"
-        default: "názov balíka"
+        case .brew: "e.g. ripgrep or user/tap/formula"
+        case .cask: "e.g. visual-studio-code"
+        case .mas: "e.g. Xcode"
+        case .vscode: "e.g. ms-python.python"
+        default: "package name"
         }
     }
 
-    private var optionsPlaceholder: String {
+    private var optionsPlaceholder: LocalizedStringKey {
         switch kind {
-        case .brew: #"napr. args: ["HEAD"], restart_service: :changed"#
-        case .cask: #"napr. args: { appdir: "~/Applications" }"#
-        case .tap: "napr. \"https://github.com/user/homebrew-repo\""
-        default: "voliteľné Ruby argumenty"
+        case .brew: #"e.g. args: ["HEAD"], restart_service: :changed"#
+        case .cask: #"e.g. args: { appdir: "~/Applications" }"#
+        case .tap: "e.g. \"https://github.com/user/homebrew-repo\""
+        default: "optional Ruby arguments"
         }
     }
 
@@ -119,12 +119,12 @@ struct EntryEditor: View {
         guard !trimmedName.isEmpty else { return nil }
         let key = previewEntry.identityKey
         let isDuplicate = model.brewfile.entries.contains { $0.identityKey == key && $0.id != existingID }
-        if isDuplicate { return "Táto položka už v Brewfile je." }
+        if isDuplicate { return String(localized: "This entry is already in the Brewfile.") }
         if kind == .brew, !model.allFormulae.isEmpty, !trimmedName.contains("/"), !model.allFormulae.contains(trimmedName) {
-            return "Formula s týmto názvom v Homebrew neexistuje (alebo ide o alias)."
+            return String(localized: "No formula with this name exists in Homebrew (or it is an alias).")
         }
         if kind == .cask, !model.allCasks.isEmpty, !trimmedName.contains("/"), !model.allCasks.contains(trimmedName) {
-            return "Cask s týmto názvom v Homebrew neexistuje."
+            return String(localized: "No cask with this name exists in Homebrew.")
         }
         return nil
     }

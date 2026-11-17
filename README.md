@@ -3,7 +3,20 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
 A native macOS app (SwiftUI) for managing Homebrew packages and your Brewfile.
-The user interface is currently in Slovak.
+Available in English and Slovak (follows the macOS language setting).
+
+## Download
+
+Get the latest **Brew-GUI-x.y.z.zip** from [Releases](https://github.com/Furcenzo/brew-gui/releases/latest)
+(universal app for Apple silicon and Intel, macOS 15 or later), unzip it and move **Brew GUI.app** to
+/Applications.
+
+The app is not notarized by Apple, so macOS blocks the first launch. Open
+**System Settings → Privacy & Security** and click **Open Anyway** next to “Brew GUI”, or run:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Brew GUI.app"
+```
 
 ## Features
 
@@ -49,11 +62,43 @@ Tests:
 swift test
 ```
 
+`swift run` always shows the English UI (there is no app bundle); to try another language, run the built app with
+`"build/Brew GUI.app/Contents/MacOS/BrewGUI" -AppleLanguages '(sk)'`.
+
+## Translations
+
+Texts in the code are English; translations live in `Sources/BrewGUI/Resources/<language>.lproj/Localizable.strings`
+(the key is the English text). After changing any user-facing text, run:
+
+```bash
+./scripts/check-localization.sh
+```
+
+It fails when a text has no translation or when non-English text ends up in the code. To run it automatically
+before every commit, enable the bundled git hook once per clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+See [CLAUDE.md](CLAUDE.md) for the detailed rules (they also apply to Claude Code, which runs the check through a
+project hook).
+
+## Releasing
+
+```bash
+./scripts/release.sh 0.2.0
+```
+
+builds a universal app and `build/Brew-GUI-0.2.0.zip`; adding `--publish` also tags `v0.2.0` and creates the
+GitHub Release.
+
 ## Project structure
 
 - `Sources/BrewCore` – Brewfile parser, process runner, wrapper around the `brew` CLI (no UI, tested).
-- `Sources/BrewGUI` – the SwiftUI app (`AppModel` + screens).
+- `Sources/BrewGUI` – the SwiftUI app (`AppModel` + screens); `Resources/*.lproj` – translations.
 - `Tests/BrewCoreTests` – tests for the parser and the process runner.
+- `scripts/` – app bundle build, release, translation check and the Claude Code hook.
 
 ## Debugging
 

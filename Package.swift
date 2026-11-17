@@ -12,7 +12,12 @@ let package = Package(
     ],
     targets: [
         .target(name: "BrewCore"),
-        .executableTarget(name: "BrewGUI", dependencies: ["BrewCore"]),
+        .executableTarget(
+            name: "BrewGUI",
+            dependencies: ["BrewCore"],
+            // Localizable.strings files are copied into the .app by scripts/build-app.sh
+            exclude: ["Resources"]
+        ),
         .testTarget(name: "BrewCoreTests", dependencies: ["BrewCore"]),
     ]
 )

@@ -20,7 +20,7 @@ struct PackageInfoView: View {
             if let info {
                 content(info)
             } else if let error {
-                ContentUnavailableView("Bez informácií", systemImage: "questionmark.square.dashed", description: Text(error))
+                ContentUnavailableView("No information", systemImage: "questionmark.square.dashed", description: Text(error))
             } else {
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -38,8 +38,8 @@ struct PackageInfoView: View {
             info = nil
             error = nil
         }
-        .confirmationDialog("Odinštalovať \(name)?", isPresented: $confirmUninstall) {
-            Button("Odinštalovať", role: .destructive) { model.uninstall(kind: kind, name: name) }
+        .confirmationDialog("Uninstall \(name)?", isPresented: $confirmUninstall) {
+            Button("Uninstall", role: .destructive) { model.uninstall(kind: kind, name: name) }
         }
     }
 
@@ -65,17 +65,17 @@ struct PackageInfoView: View {
                 actions(info)
 
                 Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
-                    row("Typ", info.kind.title)
-                    row("Najnovšia", info.latestVersion ?? "—")
-                    row("Nainštalovaná", info.installedVersion ?? "nie")
+                    row("Type", info.kind.title)
+                    row("Latest Version", info.latestVersion ?? "—")
+                    row("Installed Version", info.installedVersion ?? String(localized: "no"))
                     if let tap = info.tap { row("Tap", tap) }
                     if case .formula(let f) = info {
-                        if let license = f.license { row("Licencia", license) }
-                        if f.kegOnly == true { row("Keg-only", "áno") }
-                        if f.pinned == true { row("Pinned", "áno") }
+                        if let license = f.license { row("License", license) }
+                        if f.kegOnly == true { row("Keg-only", String(localized: "yes")) }
+                        if f.pinned == true { row("Pinned", String(localized: "yes")) }
                     }
                     if case .cask(let c) = info, c.autoUpdates == true {
-                        row("Aktualizácie", "aplikácia sa aktualizuje sama")
+                        row("Updates", String(localized: "the app updates itself"))
                     }
                 }
                 .font(.callout)
@@ -88,7 +88,7 @@ struct PackageInfoView: View {
 
                 if case .formula(let f) = info, let deps = f.dependencies, !deps.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Závislosti").font(.headline)
+                        Text("Dependencies").font(.headline)
                         Text(deps.joined(separator: ", "))
                             .font(.callout.monospaced())
                             .foregroundStyle(.secondary)
@@ -98,7 +98,7 @@ struct PackageInfoView: View {
 
                 if let caveats = info.caveats?.trimmingCharacters(in: .whitespacesAndNewlines), !caveats.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Upozornenia").font(.headline)
+                        Text("Caveats").font(.headline)
                         Text(caveats)
                             .font(.caption.monospaced())
                             .textSelection(.enabled)
@@ -123,21 +123,21 @@ struct PackageInfoView: View {
         return HStack {
             if installed {
                 if outdated {
-                    Button("Upgradovať") {
+                    Button("Upgrade") {
                         model.run("Upgrade \(name)", ["upgrade", info.kind == .cask ? "--cask" : "--formula", name])
                     }
                     .buttonStyle(.borderedProminent)
                 }
-                Button("Odinštalovať…") { confirmUninstall = true }
+                Button("Uninstall…") { confirmUninstall = true }
             } else {
-                Button("Nainštalovať") { model.install(kind: info.kind, name: name) }
+                Button("Install") { model.install(kind: info.kind, name: name) }
                     .buttonStyle(.borderedProminent)
             }
             if showsBrewfileButton {
                 if inBrewfile {
-                    Label("V Brewfile", systemImage: "checkmark").foregroundStyle(.secondary)
+                    Label("In Brewfile", systemImage: "checkmark").foregroundStyle(.secondary)
                 } else {
-                    Button("Pridať do Brewfile") { model.addToBrewfile(kind: info.kind, name: name) }
+                    Button("Add to Brewfile") { model.addToBrewfile(kind: info.kind, name: name) }
                 }
             }
         }
@@ -145,7 +145,7 @@ struct PackageInfoView: View {
         .disabled(model.isBusy)
     }
 
-    private func row(_ label: String, _ value: String) -> some View {
+    private func row(_ label: LocalizedStringKey, _ value: String) -> some View {
         GridRow {
             Text(label).foregroundStyle(.secondary)
             Text(value).textSelection(.enabled)

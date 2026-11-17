@@ -21,7 +21,7 @@ public struct CommandError: LocalizedError, Sendable {
 
     public var errorDescription: String? {
         let detail = stderr.trimmingCharacters(in: .whitespacesAndNewlines)
-        return "Príkaz `\(command)` skončil s kódom \(status)." + (detail.isEmpty ? "" : "\n\n\(detail)")
+        return String(localized: "Command `\(command)` exited with code \(status).") + (detail.isEmpty ? "" : "\n\n\(detail)")
     }
 }
 

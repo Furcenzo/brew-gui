@@ -56,8 +56,8 @@ import Testing
     @Test func deprecationText() {
         #expect(Deprecation.warning(deprecated: false, reason: nil, disabled: nil, disableReason: nil, replacement: nil) == nil)
         #expect(Deprecation.warning(deprecated: true, reason: "unmaintained", disabled: false, disableReason: nil, replacement: "foo")
-                == "Nepodporované (deprecated): projekt sa už nevyvíja. Náhrada: foo")
+                == "Deprecated: the project is no longer maintained. Replacement: foo")
         #expect(Deprecation.warning(deprecated: true, reason: nil, disabled: true, disableReason: "repo_archived", replacement: nil)
-                == "Vypnuté v Homebrew: repozitár je archivovaný")
+                == "Disabled in Homebrew: the repository is archived")
     }
 }

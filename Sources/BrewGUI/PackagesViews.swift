@@ -16,53 +16,53 @@ struct OutdatedView: View {
         let rows = model.outdated.sorted(using: sortOrder)
         Group {
             if !model.outdatedLoaded {
-                ProgressView("Zisťujem zastarané balíky…").frame(maxWidth: .infinity, maxHeight: .infinity)
+                ProgressView("Checking for outdated packages…").frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if rows.isEmpty {
                 ContentUnavailableView {
-                    Label("Všetko je aktuálne", systemImage: "checkmark.seal")
+                    Label("Everything is up to date", systemImage: "checkmark.seal")
                 } description: {
-                    Text("Pre najnovšie informácie spustite brew update.")
+                    Text("Run brew update for the latest information.")
                 } actions: {
                     Button("brew update") { model.brewUpdate() }.disabled(model.isBusy)
                 }
             } else {
                 Table(rows, selection: $selection, sortOrder: $sortOrder) {
-                    TableColumn("Typ") { row in
+                    TableColumn("Type") { row in
                         KindLabel(kind: row.isCask ? .cask : .brew)
                     }
                     .width(min: 70, ideal: 90, max: 110)
-                    TableColumn("Názov", value: \.name) { row in
+                    TableColumn("Name", value: \.name) { row in
                         HStack(spacing: 4) {
                             Text(row.name).fontWeight(.medium)
                             if row.pinned == true { Image(systemName: "pin.fill").foregroundStyle(.secondary).help("Pinned") }
                         }
                     }
-                    TableColumn("Nainštalovaná", value: \.installedVersion) { row in
+                    TableColumn("Installed Version", value: \.installedVersion) { row in
                         Text(row.installedVersion).monospacedDigit().foregroundStyle(.secondary)
                     }
-                    TableColumn("Nová", value: \.currentVersion) { row in
+                    TableColumn("New Version", value: \.currentVersion) { row in
                         Text(row.currentVersion).monospacedDigit().foregroundStyle(.orange)
                     }
-                    TableColumn("V Brewfile") { row in
+                    TableColumn("In Brewfile") { row in
                         if model.brewfile.contains(kind: row.isCask ? .cask : .brew, name: row.name) {
                             Image(systemName: "checkmark").foregroundStyle(.secondary)
                         } else {
-                            Text("závislosť / mimo").font(.caption).foregroundStyle(.tertiary)
+                            Text("dependency / outside").font(.caption).foregroundStyle(.tertiary)
                         }
                     }
                     .width(min: 80, ideal: 110)
                 }
                 .contextMenu(forSelectionType: String.self) { ids in
-                    Button("Upgradovať") { model.upgrade(model.outdated.filter { ids.contains($0.id) }) }
+                    Button("Upgrade") { model.upgrade(model.outdated.filter { ids.contains($0.id) }) }
                 }
             }
         }
         .toolbar {
             ToolbarItemGroup {
                 Toggle(isOn: $model.greedyOutdated) {
-                    Label("Aj samoaktualizujúce sa casks", systemImage: "sparkles")
+                    Label("Include Self-Updating Casks", systemImage: "sparkles")
                 }
-                .help("--greedy: zahrnúť casks, ktoré sa aktualizujú samé")
+                .help("--greedy: include casks that update themselves")
                 .onChange(of: model.greedyOutdated) { Task { await model.refreshOutdated() } }
 
                 Button {
@@ -70,19 +70,19 @@ struct OutdatedView: View {
                 } label: {
                     Label("brew update", systemImage: "arrow.clockwise")
                 }
-                .help("Stiahnuť najnovšie informácie o balíkoch (brew update)")
+                .help("Download the latest package information (brew update)")
 
                 Button {
                     model.upgrade(model.outdated.filter { selection.contains($0.id) })
                 } label: {
-                    Label("Upgradovať vybrané", systemImage: "arrow.up")
+                    Label("Upgrade Selected", systemImage: "arrow.up")
                 }
                 .disabled(selection.isEmpty)
 
                 Button {
                     model.upgradeAll()
                 } label: {
-                    Label("Upgradovať všetko", systemImage: "arrow.up.circle")
+                    Label("Upgrade All", systemImage: "arrow.up.circle")
                 }
                 .disabled(model.outdated.isEmpty)
             }
@@ -102,20 +102,20 @@ struct UnmanagedView: View {
         let items = model.unmanaged
         Group {
             if items.isEmpty {
-                ContentUnavailableView("Všetko je v Brewfile", systemImage: "checkmark.seal", description: Text("Každý balík nainštalovaný na požiadanie je zapísaný v Brewfile."))
+                ContentUnavailableView("Everything is in the Brewfile", systemImage: "checkmark.seal", description: Text("Every package installed on request is listed in the Brewfile."))
             } else {
                 Table(items, selection: $selection) {
-                    TableColumn("Typ") { item in KindLabel(kind: item.kind) }
+                    TableColumn("Type") { item in KindLabel(kind: item.kind) }
                         .width(min: 70, ideal: 90, max: 110)
-                    TableColumn("Názov") { item in Text(item.name).fontWeight(.medium) }
-                    TableColumn("Popis") { item in Text(item.desc ?? "").foregroundStyle(.secondary) }
-                    TableColumn("Verzia") { item in Text(item.version ?? "").monospacedDigit().foregroundStyle(.secondary) }
+                    TableColumn("Name") { item in Text(item.name).fontWeight(.medium) }
+                    TableColumn("Description") { item in Text(item.desc ?? "").foregroundStyle(.secondary) }
+                    TableColumn("Version") { item in Text(item.version ?? "").monospacedDigit().foregroundStyle(.secondary) }
                         .width(min: 50, ideal: 80, max: 140)
                 }
                 .contextMenu(forSelectionType: String.self) { ids in
                     let chosen = items.filter { ids.contains($0.id) }
-                    Button("Pridať do Brewfile") { add(chosen) }
-                    Button("Odinštalovať…", role: .destructive) { pendingUninstall = chosen }
+                    Button("Add to Brewfile") { add(chosen) }
+                    Button("Uninstall…", role: .destructive) { pendingUninstall = chosen }
                 }
             }
         }
@@ -124,29 +124,37 @@ struct UnmanagedView: View {
                 Button {
                     add(items.filter { selection.contains($0.id) })
                 } label: {
-                    Label("Pridať do Brewfile", systemImage: "text.badge.plus")
+                    Label("Add to Brewfile", systemImage: "text.badge.plus")
                 }
                 .disabled(selection.isEmpty)
-                .help("Zapísať vybrané do Brewfile")
+                .help("Write the selected items to the Brewfile")
 
                 Button(role: .destructive) {
                     pendingUninstall = items.filter { selection.contains($0.id) }
                 } label: {
-                    Label("Odinštalovať", systemImage: "trash")
+                    Label("Uninstall", systemImage: "trash")
                 }
                 .disabled(selection.isEmpty || model.isBusy)
             }
         }
         .confirmationDialog(
-            "Odinštalovať \(pendingUninstall.count == 1 ? pendingUninstall[0].name : "\(pendingUninstall.count) položiek")?",
+            uninstallTitle,
             isPresented: Binding(get: { !pendingUninstall.isEmpty }, set: { if !$0 { pendingUninstall = [] } })
         ) {
-            Button("Odinštalovať", role: .destructive) {
+            Button("Uninstall", role: .destructive) {
                 for item in pendingUninstall { model.uninstall(kind: item.kind, name: item.masID ?? item.name) }
                 selection.removeAll()
             }
         } message: {
             Text(pendingUninstall.map(\.name).joined(separator: ", "))
+        }
+    }
+
+    private var uninstallTitle: Text {
+        if pendingUninstall.count == 1 {
+            Text("Uninstall \(pendingUninstall[0].name)?")
+        } else {
+            Text("Uninstall selected items (\(pendingUninstall.count))?")
         }
     }
 
@@ -170,7 +178,17 @@ struct SearchView: View {
     @State private var scope: Scope = .all
     @State private var selection: SearchResult?
 
-    enum Scope: String, CaseIterable { case all = "Všetko", formulae = "Formulae", casks = "Casks" }
+    enum Scope: String, CaseIterable {
+        case all, formulae, casks
+
+        var title: LocalizedStringKey {
+            switch self {
+            case .all: "All"
+            case .formulae: "Formulae"
+            case .casks: "Casks"
+            }
+        }
+    }
 
     struct SearchResult: Hashable, Identifiable {
         var kind: EntryKind
@@ -186,10 +204,10 @@ struct SearchView: View {
                     Text(result.name)
                     Spacer()
                     if isInstalled(result) {
-                        Image(systemName: "checkmark.circle.fill").foregroundStyle(.green).help("Nainštalované")
+                        Image(systemName: "checkmark.circle.fill").foregroundStyle(.green).help("Installed")
                     }
                     if model.brewfile.contains(kind: result.kind, name: result.name) {
-                        Image(systemName: "doc.text").foregroundStyle(.secondary).help("V Brewfile")
+                        Image(systemName: "doc.text").foregroundStyle(.secondary).help("In Brewfile")
                     }
                 }
                 .tag(result)
@@ -197,7 +215,7 @@ struct SearchView: View {
             .frame(minWidth: 240, idealWidth: 300)
             .overlay {
                 if query.isEmpty {
-                    ContentUnavailableView("Hľadať v Homebrew", systemImage: "magnifyingglass", description: Text("\(model.allFormulae.count) formulae a \(model.allCasks.count) casks"))
+                    ContentUnavailableView("Search Homebrew", systemImage: "magnifyingglass", description: Text("\(model.allFormulae.count) formulae and \(model.allCasks.count) casks"))
                 } else if results.isEmpty {
                     ContentUnavailableView.search(text: query)
                 }
@@ -208,14 +226,14 @@ struct SearchView: View {
                     PackageInfoView(kind: selection.kind, name: selection.name)
                         .id(selection.id)
                 } else {
-                    ContentUnavailableView("Vyberte balík", systemImage: "shippingbox")
+                    ContentUnavailableView("Select a package", systemImage: "shippingbox")
                 }
             }
             .frame(minWidth: 320, maxWidth: .infinity, maxHeight: .infinity)
         }
-        .searchable(text: $query, placement: .toolbar, prompt: "Názov balíka")
+        .searchable(text: $query, placement: .toolbar, prompt: "Package name")
         .searchScopes($scope) {
-            ForEach(Scope.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            ForEach(Scope.allCases, id: \.self) { Text($0.title).tag($0) }
         }
     }
 

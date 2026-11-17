@@ -47,7 +47,7 @@ struct ConsoleView: View {
                         }
                     }
                     Divider()
-                    Button("Vymazať dokončené") {
+                    Button("Clear Finished") {
                         selectedJobID = nil
                         model.clearFinishedJobs()
                     }
@@ -56,10 +56,10 @@ struct ConsoleView: View {
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()
-                .help("História operácií")
+                .help("Operation History")
             }
             if job.isRunning {
-                Button("Zastaviť") { model.cancel(job) }
+                Button("Stop") { model.cancel(job) }
                     .controlSize(.small)
             }
             Button {
@@ -68,7 +68,7 @@ struct ConsoleView: View {
                 Image(systemName: model.consoleExpanded ? "chevron.down" : "chevron.up")
             }
             .buttonStyle(.borderless)
-            .help(model.consoleExpanded ? "Skryť výstup (⌘J)" : "Zobraziť výstup (⌘J)")
+            .help(model.consoleExpanded ? "Hide output (⌘J)" : "Show output (⌘J)")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 7)
@@ -81,7 +81,7 @@ struct ConsoleView: View {
         switch job.state {
         case .running: ProgressView().controlSize(.small)
         case .succeeded: Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-        case .failed(let code): Image(systemName: "xmark.octagon.fill").foregroundStyle(.red).help("Kód \(code)")
+        case .failed(let code): Image(systemName: "xmark.octagon.fill").foregroundStyle(.red).help("Exit code \(code)")
         case .cancelled: Image(systemName: "stop.circle.fill").foregroundStyle(.secondary)
         }
     }
@@ -107,7 +107,7 @@ struct ConsoleView: View {
             }
             .onAppear { proxy.scrollTo(job.lines.count - 1, anchor: .bottom) }
             .contextMenu {
-                Button("Kopírovať celý výstup") {
+                Button("Copy All Output") {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(job.lines.joined(separator: "\n"), forType: .string)
                 }

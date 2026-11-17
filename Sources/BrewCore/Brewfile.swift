@@ -31,7 +31,7 @@ public enum EntryKind: String, CaseIterable, Sendable, Hashable, Codable {
         case .brew: "Formulae"
         case .cask: "Casks"
         case .mas: "App Store"
-        case .vscode: "VS Code rozšírenia"
+        case .vscode: String(localized: "VS Code Extensions")
         default: title
         }
     }

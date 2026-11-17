@@ -23,42 +23,42 @@ struct SyncView: View {
         Form {
             Section {
                 LabeledContent("Brewfile", value: model.fileURL.path(percentEncoded: false))
-                LabeledContent("Položiek", value: "\(entries.count)")
-                LabeledContent("Chýba na tomto Macu", value: "\(missing.count)")
-                LabeledContent("Nainštalované mimo Brewfile", value: "\(model.unmanaged.count)")
+                LabeledContent("Entries", value: "\(entries.count)")
+                LabeledContent("Missing on This Mac", value: "\(missing.count)")
+                LabeledContent("Installed Outside the Brewfile", value: "\(model.unmanaged.count)")
             } header: {
-                Text("Stav")
+                Text("Status")
             } footer: {
                 if model.externalChangeDetected {
-                    Label("Brewfile zmenil iný program – pred synchronizáciou sa prepíše vašimi úpravami.", systemImage: "exclamationmark.triangle")
+                    Label("Another program changed the Brewfile – it will be overwritten with your changes before syncing.", systemImage: "exclamationmark.triangle")
                         .foregroundStyle(.orange)
                 }
             }
 
             Section("Brewfile → Mac") {
                 actionRow(
-                    title: "Skontrolovať",
-                    detail: "brew bundle check – zistí, či je všetko z Brewfile nainštalované.",
-                    button: "Skontrolovať"
+                    title: "Check",
+                    detail: "brew bundle check – finds out whether everything in the Brewfile is installed.",
+                    button: "Check"
                 ) { perform(.check) }
 
                 actionRow(
-                    title: "Nainštalovať chýbajúce",
-                    detail: "brew bundle install – doinštaluje taps, formulae, casks aj App Store aplikácie.",
-                    button: "Inštalovať",
+                    title: "Install Missing",
+                    detail: "brew bundle install – installs missing taps, formulae, casks and App Store apps.",
+                    button: "Install",
                     prominent: true
                 ) { perform(.install) }
-                Toggle("Pri inštalácii aj upgradovať zastarané balíky", isOn: $upgradeOnInstall)
+                Toggle("Also upgrade outdated packages when installing", isOn: $upgradeOnInstall)
 
                 if !missing.isEmpty {
-                    DisclosureGroup("Chýbajúce položky (\(missing.count))") {
+                    DisclosureGroup("Missing Entries (\(missing.count))") {
                         ForEach(missing) { entry in
                             HStack {
                                 KindLabel(kind: entry.kind).frame(width: 100, alignment: .leading)
                                 Text(entry.name).font(.body.monospaced())
                                 Spacer()
                                 if entry.kind.isManaged {
-                                    Button("Nainštalovať") { model.install(entry) }
+                                    Button("Install") { model.install(entry) }
                                         .controlSize(.small)
                                 }
                             }
@@ -69,22 +69,22 @@ struct SyncView: View {
 
             Section("Mac → Brewfile") {
                 actionRow(
-                    title: "Upratať podľa Brewfile",
-                    detail: "brew bundle cleanup – odinštaluje všetko, čo v Brewfile nie je. Najprv ukáže náhľad.",
-                    button: loadingPreview ? "Načítavam…" : "Náhľad…",
+                    title: "Clean Up to Match Brewfile",
+                    detail: "brew bundle cleanup – uninstalls everything that isn't in the Brewfile. Shows a preview first.",
+                    button: loadingPreview ? "Loading…" : "Preview…",
                     role: .destructive
                 ) { perform(.cleanup) }
 
                 actionRow(
-                    title: "Exportovať aktuálny stav",
-                    detail: "brew bundle dump – zapíše všetko nainštalované do nového súboru.",
-                    button: "Exportovať…"
+                    title: "Export Current State",
+                    detail: "brew bundle dump – writes everything installed to a new file.",
+                    button: "Export…"
                 ) { dump() }
 
                 actionRow(
-                    title: "Pridať nainštalované do Brewfile",
-                    detail: "Zoznam balíkov, ktoré máte nainštalované, ale v Brewfile chýbajú.",
-                    button: "Zobraziť"
+                    title: "Add Installed Packages to Brewfile",
+                    detail: "A list of packages you have installed that are missing from the Brewfile.",
+                    button: "Show"
                 ) { model.sidebarSelection = .unmanaged }
             }
         }
@@ -98,9 +98,9 @@ struct SyncView: View {
     }
 
     private func actionRow(
-        title: String,
-        detail: String,
-        button: String,
+        title: LocalizedStringKey,
+        detail: LocalizedStringKey,
+        button: LocalizedStringKey,
         prominent: Bool = false,
         role: ButtonRole? = nil,
         action: @escaping () -> Void
@@ -141,16 +141,16 @@ struct SyncView: View {
 
     private func dump() {
         let panel = NSSavePanel()
-        panel.title = "Exportovať aktuálny stav"
+        panel.title = String(localized: "Export Current State")
         panel.nameFieldStringValue = "Brewfile.dump"
         panel.directoryURL = model.fileURL.deletingLastPathComponent()
         panel.showsHiddenFiles = true
-        let describe = NSButton(checkboxWithTitle: "Pridať popisy balíkov ako komentáre", target: nil, action: nil)
+        let describe = NSButton(checkboxWithTitle: String(localized: "Add package descriptions as comments"), target: nil, action: nil)
         describe.state = .on
         panel.accessoryView = describe
         guard panel.runModal() == .OK, let url = panel.url else { return }
         if url.standardizedFileURL == model.fileURL.standardizedFileURL {
-            model.errorMessage = "Export by prepísal otvorený Brewfile. Zvoľte iný názov súboru."
+            model.errorMessage = String(localized: "The export would overwrite the open Brewfile. Choose a different file name.")
             return
         }
         model.bundleDump(to: url, describe: describe.state == .on)
@@ -165,12 +165,12 @@ struct CleanupSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Upratanie podľa Brewfile").font(.title2.bold())
+            Text("Brewfile Cleanup").font(.title2.bold())
             if preview.isEmpty {
-                ContentUnavailableView("Nie je čo upratovať", systemImage: "sparkles", description: Text("Všetko nainštalované je v Brewfile."))
+                ContentUnavailableView("Nothing to clean up", systemImage: "sparkles", description: Text("Everything installed is in the Brewfile."))
                     .frame(height: 200)
             } else {
-                Text("Nasledujúce sa odinštaluje / odstráni. Toto sa nedá vrátiť späť (balíky sa dajú neskôr znovu nainštalovať).")
+                Text("The following will be uninstalled / removed. This can't be undone (packages can be reinstalled later).")
                     .foregroundStyle(.secondary)
                 List {
                     section("Casks", preview.casks)
@@ -182,10 +182,10 @@ struct CleanupSheet: View {
             }
             HStack {
                 Spacer()
-                Button("Zrušiť", role: .cancel) { dismiss() }
+                Button("Cancel", role: .cancel) { dismiss() }
                     .keyboardShortcut(.cancelAction)
                 if !preview.isEmpty {
-                    Button("Odinštalovať", role: .destructive) {
+                    Button("Uninstall", role: .destructive) {
                         onConfirm()
                         dismiss()
                     }
@@ -200,7 +200,7 @@ struct CleanupSheet: View {
 
     @ViewBuilder private func section(_ title: String, _ items: [String]) -> some View {
         if !items.isEmpty {
-            Section("\(title) (\(items.count))") {
+            Section("\(title) (\(items.count))" as String) {
                 ForEach(items, id: \.self) { Text($0).font(.callout.monospaced()) }
             }
         }

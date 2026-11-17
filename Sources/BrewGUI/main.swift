@@ -65,21 +65,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         if model.isBusy {
             let alert = NSAlert()
-            alert.messageText = "Brew ešte pracuje"
-            alert.informativeText = "Ukončením aplikácie sa prebiehajúca operácia preruší."
-            alert.addButton(withTitle: "Počkať")
-            alert.addButton(withTitle: "Ukončiť")
+            alert.messageText = String(localized: "Brew is still working")
+            alert.informativeText = String(localized: "Quitting the app will interrupt the running operation.")
+            alert.addButton(withTitle: String(localized: "Wait"))
+            alert.addButton(withTitle: String(localized: "Quit"))
             if alert.runModal() == .alertFirstButtonReturn { return .terminateCancel }
         }
         // Zmeny sa ukladajú automaticky; dočasne neuložené (posledných pár stotín sekundy) uložíme bez pýtania.
         guard model.isDirty else { return .terminateNow }
         if model.externalChangeDetected {
             let alert = NSAlert()
-            alert.messageText = "Brewfile medzitým zmenil iný program"
-            alert.informativeText = "Máte tu zmeny, ktoré ešte nie sú uložené. Prepísať nimi súbor na disku?"
-            alert.addButton(withTitle: "Prepísať")
-            alert.addButton(withTitle: "Zrušiť")
-            alert.addButton(withTitle: "Ponechať súbor na disku")
+            alert.messageText = String(localized: "Another program changed the Brewfile")
+            alert.informativeText = String(localized: "You have changes that haven't been saved yet. Overwrite the file on disk with them?")
+            alert.addButton(withTitle: String(localized: "Overwrite"))
+            alert.addButton(withTitle: String(localized: "Cancel"))
+            alert.addButton(withTitle: String(localized: "Keep File on Disk"))
             switch alert.runModal() {
             case .alertFirstButtonReturn: break
             case .alertSecondButtonReturn: return .terminateCancel
@@ -112,23 +112,23 @@ struct AppCommands: Commands {
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
-            Button("Otvoriť Brewfile…") { model.openPanel() }
+            Button("Open Brewfile…") { model.openPanel() }
                 .keyboardShortcut("o")
-            Button("Znovu načítať zo súboru") { model.reloadFile() }
+            Button("Reload from File") { model.reloadFile() }
                 .keyboardShortcut("r", modifiers: [.command, .shift])
         }
         CommandGroup(replacing: .saveItem) {
-            Button("Uložiť Brewfile") { model.save() }
+            Button("Save Brewfile") { model.save() }
                 .keyboardShortcut("s")
         }
         CommandMenu("Brew") {
-            Button("Obnoviť stav") { Task { await model.refreshAll() } }
+            Button("Refresh Status") { Task { await model.refreshAll() } }
                 .keyboardShortcut("r")
             Button("brew update") { model.brewUpdate() }
                 .disabled(model.isBusy)
             Divider()
-            Button("Skontrolovať Brewfile") { model.bundleCheck() }
-            Button(model.consoleExpanded ? "Skryť konzolu" : "Zobraziť konzolu") { model.consoleExpanded.toggle() }
+            Button("Check Brewfile") { model.bundleCheck() }
+            Button(model.consoleExpanded ? "Hide Console" : "Show Console") { model.consoleExpanded.toggle() }
                 .keyboardShortcut("j")
         }
     }

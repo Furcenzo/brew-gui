@@ -17,9 +17,9 @@ struct ContentView: View {
             Group {
                 if model.client == nil {
                     ContentUnavailableView(
-                        "Homebrew sa nenašiel",
+                        "Homebrew not found",
                         systemImage: "exclamationmark.triangle",
-                        description: Text("Brew GUI hľadá brew v /opt/homebrew/bin a /usr/local/bin.")
+                        description: Text("Brew GUI looks for brew in /opt/homebrew/bin and /usr/local/bin.")
                     )
                 } else {
                     detail
@@ -29,19 +29,19 @@ struct ContentView: View {
                 ConsoleView()
             }
         }
-        .navigationTitle(model.fileURL.lastPathComponent + (model.isDirty ? " — upravené" : ""))
+        .navigationTitle(model.isDirty ? String(localized: "\(model.fileURL.lastPathComponent) — edited") : model.fileURL.lastPathComponent)
         .navigationSubtitle(model.fileURL.deletingLastPathComponent().path(percentEncoded: false))
         .task { await model.refreshAll() }
-        .alert("Chyba", isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })) {
+        .alert("Error", isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })) {
             Button("OK") { model.errorMessage = nil }
         } message: {
             Text(model.errorMessage ?? "")
         }
-        .alert("Brewfile sa zmenil na disku", isPresented: $model.externalChangeDetected) {
-            Button("Načítať zo súboru", role: .destructive) { model.reloadFile() }
-            Button("Prepísať mojimi úpravami", role: .cancel) { model.save() }
+        .alert("The Brewfile changed on disk", isPresented: $model.externalChangeDetected) {
+            Button("Load from File", role: .destructive) { model.reloadFile() }
+            Button("Overwrite with My Changes", role: .cancel) { model.save() }
         } message: {
-            Text("Súbor upravil iný program, ale máte tu ešte neuložené zmeny. Načítaním zo súboru o ne prídete.")
+            Text("Another program modified the file, but you still have unsaved changes here. Loading from the file will discard them.")
         }
         .onAppear { model.undoManager = undoManager }
         .onChange(of: undoManager.map(ObjectIdentifier.init)) { model.undoManager = undoManager }
@@ -69,7 +69,7 @@ struct SidebarView: View {
 
         List(selection: $model.sidebarSelection) {
             Section("Brewfile") {
-                Label("Všetky položky", systemImage: "doc.text")
+                Label("All Entries", systemImage: "doc.text")
                     .badge(entries.count)
                     .tag(SidebarItem.brewfile(nil))
                 ForEach(kinds, id: \.self) { kind in
@@ -77,20 +77,20 @@ struct SidebarView: View {
                         .badge(entries.filter { $0.kind == kind }.count)
                         .tag(SidebarItem.brewfile(kind))
                 }
-                Label("Chýbajúce", systemImage: "exclamationmark.circle")
+                Label("Missing", systemImage: "exclamationmark.circle")
                     .badge(model.missingEntries.count)
                     .tag(SidebarItem.missing)
             }
-            Section("Systém") {
-                Label("Synchronizácia", systemImage: "arrow.triangle.2.circlepath")
+            Section("System") {
+                Label("Sync", systemImage: "arrow.triangle.2.circlepath")
                     .tag(SidebarItem.sync)
-                Label("Aktualizácie", systemImage: "arrow.up.circle")
+                Label("Updates", systemImage: "arrow.up.circle")
                     .badge(model.outdated.count)
                     .tag(SidebarItem.outdated)
-                Label("Mimo Brewfile", systemImage: "tray")
+                Label("Not in Brewfile", systemImage: "tray")
                     .badge(model.unmanaged.count)
                     .tag(SidebarItem.unmanaged)
-                Label("Hľadať balíky", systemImage: "magnifyingglass")
+                Label("Search Packages", systemImage: "magnifyingglass")
                     .tag(SidebarItem.search)
             }
         }
@@ -98,7 +98,7 @@ struct SidebarView: View {
             if model.loadingInstalled || model.loadingOutdated {
                 HStack(spacing: 6) {
                     ProgressView().controlSize(.small)
-                    Text("Načítavam stav…").font(.caption).foregroundStyle(.secondary)
+                    Text("Loading status…").font(.caption).foregroundStyle(.secondary)
                 }
                 .padding(8)
             }
@@ -114,13 +114,13 @@ struct StatusBadge: View {
     var body: some View {
         switch status {
         case .installed:
-            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green).help("Nainštalované")
+            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green).help("Installed")
         case .outdated(_, let latest):
-            Image(systemName: "arrow.up.circle.fill").foregroundStyle(.orange).help("Zastarané – nová verzia \(latest ?? "?")")
+            Image(systemName: "arrow.up.circle.fill").foregroundStyle(.orange).help("Outdated – new version \(latest ?? "?")")
         case .missing:
-            Image(systemName: "xmark.circle.fill").foregroundStyle(.red).help("Nenainštalované")
+            Image(systemName: "xmark.circle.fill").foregroundStyle(.red).help("Not installed")
         case .unknown:
-            Image(systemName: "questionmark.circle").foregroundStyle(.secondary).help("Stav neznámy")
+            Image(systemName: "questionmark.circle").foregroundStyle(.secondary).help("Status unknown")
         }
     }
 }
