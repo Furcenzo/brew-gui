@@ -5,6 +5,7 @@
 # Builds a downloadable release of Brew GUI.
 #   ./scripts/release.sh 0.2.0            build + zip into build/ (nothing is published)
 #   ./scripts/release.sh 0.2.0 --publish  also tag v0.2.0, push the tag and create a GitHub Release
+#                                         (its "What's new" comes from the "## 0.2.0" section of CHANGELOG.md)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -23,6 +24,10 @@ if [[ "$PUBLISH" == "--publish" ]]; then
     git fetch --quiet origin main --tags
     [[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/main)" ]] || { echo "main is not in sync with origin/main – push or pull first." >&2; exit 1; }
     ! git rev-parse -q --verify "refs/tags/$TAG" >/dev/null || { echo "Tag $TAG already exists." >&2; exit 1; }
+    # The "## <version>" section of CHANGELOG.md, without its heading.
+    CHANGES="$(awk -v v="## $VERSION" '$0 == v { found = 1; next } found && /^## / { exit } found' CHANGELOG.md \
+        | sed -e '/./,$!d' | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}')"
+    [[ -n "$CHANGES" ]] || { echo "CHANGELOG.md has no \"## $VERSION\" section with the changes – add it first." >&2; exit 1; }
 fi
 
 swift test
@@ -40,6 +45,10 @@ echo "SHA-256: $SHA"
 NOTES="$(mktemp)"
 trap 'rm -f "$NOTES"' EXIT
 cat > "$NOTES" <<EOF
+## What's new
+
+$CHANGES
+
 ## Download
 
 **[Brew-GUI-$VERSION.zip](https://github.com/Furcenzo/brew-gui/releases/download/$TAG/Brew-GUI-$VERSION.zip)** – universal app (Apple silicon + Intel), macOS 15 or later, English and Slovak.

@@ -93,7 +93,7 @@ project hook).
 ```
 
 builds a universal app and `build/Brew-GUI-0.2.0.zip`; adding `--publish` also tags `v0.2.0` and creates the
-GitHub Release.
+GitHub Release, using the `## 0.2.0` section of [CHANGELOG.md](CHANGELOG.md) as its release notes.
 
 ## Project structure
 
