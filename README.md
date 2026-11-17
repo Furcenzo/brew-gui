@@ -1,3 +1,5 @@
+<img src="scripts/icon/AppIcon.png" width="128" alt="Brew GUI icon">
+
 # Brew GUI
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
@@ -120,7 +122,8 @@ cask in [Furcenzo/homebrew-tap](https://github.com/Furcenzo/homebrew-tap).
 - `Sources/BrewCore` – Brewfile parser, process runner, wrapper around the `brew` CLI (no UI, tested).
 - `Sources/BrewGUI` – the SwiftUI app (`AppModel` + screens); `Resources/*.lproj` – translations.
 - `Tests/BrewCoreTests` – tests for the parser and the process runner.
-- `scripts/` – app bundle build, release, translation check and the Claude Code hook.
+- `scripts/` – app bundle build, release, translation check and the Claude Code hook;
+  `scripts/icon/` – the app icon is drawn in code (`AppIcon.swift`), `make-icon.sh` rebuilds `AppIcon.icns`.
 
 ## Debugging
 

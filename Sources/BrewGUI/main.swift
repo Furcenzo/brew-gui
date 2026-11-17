@@ -11,6 +11,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // When started via `swift run` the process has no bundle – turn it into a regular app with a Dock icon.
         NSApp.setActivationPolicy(.regular)
+        if Bundle.main.bundleIdentifier == nil {
+            // `swift run` has no bundle to take the icon from – use the one from the source tree.
+            let icon = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("Resources/AppIcon.icns")
+            NSApp.applicationIconImage = NSImage(contentsOf: icon)
+        }
         NSApp.activate()
         scheduleDebugSnapshot()
         model.autoUpdateOnLaunch()
