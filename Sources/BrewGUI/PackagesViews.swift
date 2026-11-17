@@ -177,6 +177,7 @@ struct SearchView: View {
     @State private var query = ""
     @State private var scope: Scope = .all
     @State private var selection: SearchResult?
+    @FocusState private var searchFocused: Bool
 
     enum Scope: String, CaseIterable {
         case all, formulae, casks
@@ -232,9 +233,12 @@ struct SearchView: View {
             .frame(minWidth: 320, maxWidth: .infinity, maxHeight: .infinity)
         }
         .searchable(text: $query, placement: .toolbar, prompt: "Package name")
+        .searchFocused($searchFocused)
         .searchScopes($scope) {
             ForEach(Scope.allCases, id: \.self) { Text($0.title).tag($0) }
         }
+        // Focus the search field when the page opens, so you can start typing right away.
+        .task { searchFocused = true }
     }
 
     private var results: [SearchResult] {
