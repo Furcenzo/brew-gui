@@ -5,6 +5,8 @@ version into the GitHub Release notes, so add a section before publishing.
 
 ## Unreleased
 
+## 0.4.1
+
 - **New app icon** – a mug of beer with a checklist (your Brewfile).
 
 ## 0.4.0
