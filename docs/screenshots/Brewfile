@@ -1,0 +1,26 @@
+# Sample Brewfile used for the README screenshots (scripts/screenshots.sh)
+
+# Command-line tools
+brew "git"
+brew "gh"
+brew "ripgrep"
+brew "fd"
+brew "bat"
+brew "eza"
+brew "fzf"
+brew "jq"
+brew "neovim"
+brew "starship"
+brew "wget"
+brew "node" # JavaScript runtime
+
+# Apps
+cask "visual-studio-code"
+cask "ghostty"
+cask "google-chrome"
+cask "rectangle"
+cask "firefox"
+cask "iina"
+
+# Mac App Store
+mas "Xcode", id: 497799835

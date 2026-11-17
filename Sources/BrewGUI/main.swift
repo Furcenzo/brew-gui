@@ -25,11 +25,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.appDidResignActive()
     }
 
-    /// Debugging: `BREWGUI_SNAPSHOT=/path.png [BREWGUI_PAGE=sync|outdated|unmanaged|search|missing]`
+    /// Debugging: `BREWGUI_SNAPSHOT=/path.png [BREWGUI_PAGE=sync|outdated|unmanaged|apps|search|missing]`
     /// saves an image of the window once loaded (no screen recording permission needed) and quits the app.
+    /// Used by scripts/screenshots.sh together with BREWGUI_APPEARANCE=light|dark, BREWGUI_WINDOW_SIZE=1200x750,
+    /// BREWGUI_SELECT=<entry name> (Brewfile inspector) and BREWGUI_SEARCH=<package> (Search page).
     private func scheduleDebugSnapshot() {
         let env = ProcessInfo.processInfo.environment
         guard let path = env["BREWGUI_SNAPSHOT"] else { return }
+        switch env["BREWGUI_APPEARANCE"] {
+        case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
+        case "light": NSApp.appearance = NSAppearance(named: .aqua)
+        default: break
+        }
+        model.debugSelectEntry = env["BREWGUI_SELECT"]
+        model.debugDisplayPath = env["BREWGUI_DISPLAY_PATH"]
+        if let query = env["BREWGUI_SEARCH"] {
+            model.debugSearchQuery = query
+            model.sidebarSelection = .search
+        }
         if let file = env["BREWGUI_FILE"] { model.loadFile(URL(fileURLWithPath: file)) }
         if let name = env["BREWGUI_DEBUG_ADD"] {
             // simulate an edit: add an entry, optionally ⌘Z after 2 s
@@ -59,7 +72,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         default: break
         }
         Task { @MainActor in
+            if let size = env["BREWGUI_WINDOW_SIZE"]?.split(separator: "x").compactMap({ Double($0) }), size.count == 2 {
+                try? await Task.sleep(for: .milliseconds(300))
+                if let window = NSApp.windows.first(where: { $0.isVisible }) {
+                    window.setContentSize(NSSize(width: size[0], height: size[1]))
+                    window.center()
+                }
+            }
             try? await Task.sleep(for: .seconds(Double(env["BREWGUI_DELAY"] ?? "5") ?? 5))
+            // Look like the active window (coloured traffic lights) in the image.
+            NSApp.activate(ignoringOtherApps: true)
+            NSApp.windows.first(where: { $0.isVisible })?.makeKeyAndOrderFront(nil)
+            try? await Task.sleep(for: .milliseconds(500))
             guard let view = NSApp.windows.first(where: { $0.isVisible })?.contentView?.superview,
                   let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { exit(2) }
             view.cacheDisplay(in: view.bounds, to: rep)

@@ -22,7 +22,7 @@ struct SyncView: View {
         let missing = model.missingEntries
         Form {
             Section {
-                LabeledContent("Brewfile", value: model.fileURL.path(percentEncoded: false))
+                LabeledContent("Brewfile", value: model.filePath)
                 LabeledContent("Entries", value: "\(entries.count)")
                 LabeledContent("Missing on This Mac", value: "\(missing.count)")
                 LabeledContent("Installed Outside the Brewfile", value: "\(model.unmanaged.count)")

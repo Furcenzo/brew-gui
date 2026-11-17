@@ -30,7 +30,7 @@ struct ContentView: View {
             }
         }
         .navigationTitle(model.isDirty ? String(localized: "\(model.fileURL.lastPathComponent) — edited") : model.fileURL.lastPathComponent)
-        .navigationSubtitle(model.fileURL.deletingLastPathComponent().path(percentEncoded: false))
+        .navigationSubtitle((model.filePath as NSString).deletingLastPathComponent + "/")
         .task { await model.refreshAll() }
         .alert("Error", isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })) {
             Button("OK") { model.errorMessage = nil }

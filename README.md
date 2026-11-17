@@ -7,6 +7,11 @@
 A native macOS app (SwiftUI) for managing Homebrew packages and your Brewfile.
 Available in English and Slovak (follows the macOS language setting).
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/brewfile-dark.png">
+  <img src="docs/screenshots/brewfile-light.png" alt="Brew GUI: the Brewfile table with package details">
+</picture>
+
 ## Download
 
 With Homebrew:
@@ -62,6 +67,19 @@ If another program changes the Brewfile in the meantime, the app asks whether to
 The state of installed packages is refreshed every time you switch to the app (at most once every 10 s), after each
 operation, and manually with ⌘R – so it also picks up a `brew install` run in Terminal.
 If a cask needs an administrator password, a system dialog is shown (via `SUDO_ASKPASS`).
+
+## Screenshots
+
+| Sync | Search |
+|---|---|
+| ![Sync: brew bundle check, install, cleanup and dump](docs/screenshots/sync-dark.png) | ![Search with package details](docs/screenshots/search-light.png) |
+
+| Slovak |
+|---|
+| ![The Brewfile table in Slovak](docs/screenshots/brewfile-sk-light.png) |
+
+The screenshots use the sample [docs/screenshots/Brewfile](docs/screenshots/Brewfile); regenerate them with
+`./scripts/screenshots.sh`.
 
 ## Requirements
 
@@ -134,6 +152,9 @@ saves an image of the window once loaded and quits the app (useful without scree
 `BREWGUI_FILE=/path/to/Brewfile` opens a different file, `BREWGUI_DEBUG_ADD=name [BREWGUI_DEBUG_UNDO=1]`
 simulates adding an entry (and ⌘Z) – only test this on a copy of your Brewfile.
 `BREWGUI_APPS_DIRS=/dir1:/dir2` scans other folders instead of /Applications and ~/Applications.
+For screenshots: `BREWGUI_APPEARANCE=light|dark`, `BREWGUI_WINDOW_SIZE=1280x800`, `BREWGUI_SELECT=<entry>`
+(selects it in the Brewfile table), `BREWGUI_SEARCH=<package>` (opens it in Search) and
+`BREWGUI_DISPLAY_PATH=~/Brewfile` (path shown instead of the real one).
 
 ## License
 

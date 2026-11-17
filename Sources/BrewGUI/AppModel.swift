@@ -89,6 +89,15 @@ final class AppModel {
     var sidebarSelection: SidebarItem? = .brewfile(nil)
     var errorMessage: String?
 
+    // Debugging (scripts/screenshots.sh): picked up once by BrewfileView / SearchView
+    var debugSelectEntry: String?
+    var debugSearchQuery: String?
+    /// Shown instead of the real path of the Brewfile (BREWGUI_DISPLAY_PATH, e.g. `~/Brewfile` for screenshots).
+    var debugDisplayPath: String?
+
+    /// Path of the open Brewfile as shown in the UI.
+    var filePath: String { debugDisplayPath ?? fileURL.path(percentEncoded: false) }
+
     init() {
         Self.migrateLegacyDefaults()
         client = BrewClient.locate()

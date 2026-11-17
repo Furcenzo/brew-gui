@@ -5,6 +5,8 @@ version into the GitHub Release notes, so add a section before publishing.
 
 ## Unreleased
 
+- Package details in the Brewfile inspector no longer start far below the entry header.
+
 ## 0.4.1
 
 - **New app icon** – a mug of beer with a checklist (your Brewfile).

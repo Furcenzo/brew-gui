@@ -395,6 +395,12 @@ struct SearchView: View {
         }
         // Focus the search field when the page opens, so you can start typing right away.
         .task { searchFocused = true }
+        .task(id: model.allCasks.count) {
+            guard let name = model.debugSearchQuery, !model.allCasks.isEmpty else { return }
+            query = name
+            selection = SearchResult(kind: model.allCasks.contains(name) ? .cask : .brew, name: name)
+            model.debugSearchQuery = nil
+        }
     }
 
     private var results: [SearchResult] {

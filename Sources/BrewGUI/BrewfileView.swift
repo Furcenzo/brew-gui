@@ -67,6 +67,12 @@ struct BrewfileView: View {
             Text("This runs `brew uninstall` for \(entry.kind.title.lowercased()) \(entry.name). If you keep the Brewfile entry, `brew bundle install` will install it again.")
         }
         .onChange(of: kindFilter) { selection.removeAll() }
+        .task(id: model.brewfile.entries.count) {
+            guard let name = model.debugSelectEntry,
+                  let entry = model.brewfile.entries.first(where: { $0.name == name }) else { return }
+            selection = [entry.id]
+            model.debugSelectEntry = nil
+        }
     }
 
     // MARK: Table
@@ -98,7 +104,7 @@ struct BrewfileView: View {
             ContentUnavailableView {
                 Label("The Brewfile is empty", systemImage: "doc")
             } description: {
-                Text(model.fileURL.path(percentEncoded: false))
+                Text(model.filePath)
             } actions: {
                 Button("Add Entry") { editing = .new(kindFilter ?? .brew) }
                 Button("Open Another File…") { model.openPanel() }
@@ -293,8 +299,12 @@ struct EntryInspector: View {
 
     var body: some View {
         if entry.kind == .brew || entry.kind == .cask {
-            PackageInfoView(kind: entry.kind, name: entry.name, showsBrewfileButton: false)
-                .safeAreaInset(edge: .top) { header }
+            // Stacked rather than as a safe-area inset: the inset left a large gap above the package details.
+            VStack(spacing: 0) {
+                header
+                Divider()
+                PackageInfoView(kind: entry.kind, name: entry.name, showsBrewfileButton: false)
+            }
         } else {
             VStack(alignment: .leading, spacing: 12) {
                 header
@@ -343,7 +353,7 @@ struct BrewfileSummary: View {
         let statuses = entries.map(model.status(of:))
         Form {
             Section("File") {
-                LabeledContent("Path", value: model.fileURL.path(percentEncoded: false))
+                LabeledContent("Path", value: model.filePath)
                 LabeledContent("Entries", value: "\(entries.count)")
                 if model.isDirty {
                     LabeledContent("Status", value: String(localized: "Unsaved changes"))
