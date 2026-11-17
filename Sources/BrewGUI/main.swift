@@ -35,6 +35,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case "sync": model.sidebarSelection = .sync
         case "outdated": model.sidebarSelection = .outdated
         case "unmanaged": model.sidebarSelection = .unmanaged
+        case "apps":
+            UserDefaults.standard.set("apps", forKey: "unmanagedMode")
+            model.sidebarSelection = .unmanaged
         case "search": model.sidebarSelection = .search
         case "missing": model.sidebarSelection = .missing
         case "casks": model.sidebarSelection = .brewfile(.cask)

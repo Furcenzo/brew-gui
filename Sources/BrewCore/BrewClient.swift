@@ -73,6 +73,37 @@ enum Deprecation {
     }
 }
 
+/// Every string inside a cask's `artifacts` JSON (whose shape differs per artifact type), collected recursively.
+public struct ArtifactStrings: Decodable, Sendable, Hashable {
+    public var values: [String]
+
+    public init(_ values: [String]) { self.values = values }
+
+    private struct AnyKey: CodingKey {
+        var stringValue: String
+        var intValue: Int? { nil }
+        init(stringValue: String) { self.stringValue = stringValue }
+        init?(intValue: Int) { nil }
+    }
+
+    public init(from decoder: Decoder) throws {
+        if let single = try? decoder.singleValueContainer(), let string = try? single.decode(String.self) {
+            values = [string]
+        } else if var list = try? decoder.unkeyedContainer() {
+            var out: [String] = []
+            while !list.isAtEnd {
+                guard let nested = try? list.decode(ArtifactStrings.self) else { break }
+                out += nested.values
+            }
+            values = out
+        } else if let object = try? decoder.container(keyedBy: AnyKey.self) {
+            values = object.allKeys.flatMap { (try? object.decode(ArtifactStrings.self, forKey: $0))?.values ?? [] }
+        } else {
+            values = []
+        }
+    }
+}
+
 public struct CaskInfo: Decodable, Sendable, Hashable {
     public var token: String
     public var fullToken: String
@@ -92,6 +123,15 @@ public struct CaskInfo: Decodable, Sendable, Hashable {
     public var deprecationReplacementFormula: String?
     public var disabled: Bool?
     public var disableReason: String?
+    public var artifacts: ArtifactStrings?
+
+    /// Lowercased file names of every `.app` the cask installs or removes (`app`, `uninstall`/`zap` paths…).
+    public var appFileNames: Set<String> {
+        Set((artifacts?.values ?? []).compactMap { path in
+            let name = (path as NSString).lastPathComponent
+            return name.lowercased().hasSuffix(".app") ? name.lowercased() : nil
+        })
+    }
 
     public var lifecycleWarning: String? {
         Deprecation.warning(
@@ -475,6 +515,18 @@ public struct BrewClient: Sendable {
         if let formula = response.formulae.first { return .formula(formula) }
         if let cask = response.casks.first { return .cask(cask) }
         throw CommandError(command: "brew " + args.joined(separator: " "), status: 0, stderr: String(localized: "Package not found."))
+    }
+
+    /// `brew info` for the given cask tokens (in batches). Batches that fail are skipped.
+    public func casks(_ tokens: [String]) async -> [CaskInfo] {
+        var result: [CaskInfo] = []
+        for start in stride(from: 0, to: tokens.count, by: 50) {
+            let batch = Array(tokens[start..<min(start + 50, tokens.count)])
+            guard let text = try? await capture(["info", "--json=v2", "--cask"] + batch),
+                  let response = try? Self.decoder.decode(InfoResponse.self, from: Data(text.utf8)) else { continue }
+            result += response.casks
+        }
+        return result
     }
 
     public func cleanupPreview(file: URL) async throws -> CleanupPreview {

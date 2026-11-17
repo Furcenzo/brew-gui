@@ -94,6 +94,31 @@ struct OutdatedView: View {
 // MARK: - Not in Brewfile
 
 struct UnmanagedView: View {
+    enum Mode: String { case packages, apps }
+    @AppStorage("unmanagedMode") private var mode: Mode = .packages
+
+    var body: some View {
+        Group {
+            switch mode {
+            case .packages: UnmanagedPackagesView()
+            case .apps: UnmanagedAppsView()
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .navigation) {
+                Picker("Show", selection: $mode) {
+                    Text("Packages").tag(Mode.packages)
+                    Text("Apps").tag(Mode.apps)
+                }
+                .pickerStyle(.segmented)
+                .help("Packages and taps missing from the Brewfile, or apps installed outside Homebrew")
+            }
+        }
+    }
+}
+
+/// Packages, taps and App Store apps that are installed but not in the Brewfile.
+struct UnmanagedPackagesView: View {
     @Environment(AppModel.self) private var model
     @State private var selection = Set<String>()
     @State private var pendingUninstall: [UnmanagedItem] = []
@@ -167,6 +192,137 @@ struct UnmanagedView: View {
             }
         }
         selection.removeAll()
+    }
+}
+
+// MARK: - Apps outside Homebrew
+
+/// Apps in /Applications installed by hand, with the cask Homebrew could take them over with.
+struct UnmanagedAppsView: View {
+    @Environment(AppModel.self) private var model
+    @State private var selection = Set<String>()
+    @State private var pendingAdopt: UnmanagedApp?
+    @State private var pendingReinstall: UnmanagedApp?
+
+    var body: some View {
+        let items = model.unmanagedApps
+        let selected = items.filter { selection.contains($0.id) }
+        let single = selected.count == 1 ? selected.first : nil
+        Group {
+            if !model.appsLoaded {
+                ProgressView("Looking for apps…").frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if items.isEmpty {
+                ContentUnavailableView("All apps are managed", systemImage: "checkmark.seal", description: Text("Every app in Applications comes from Homebrew, the App Store or macOS."))
+            } else {
+                Table(items, selection: $selection) {
+                    TableColumn("App") { item in
+                        HStack(spacing: 6) {
+                            Image(nsImage: NSWorkspace.shared.icon(forFile: item.app.url.path))
+                                .resizable()
+                                .frame(width: 18, height: 18)
+                            Text(item.app.name).fontWeight(.medium)
+                        }
+                        .help(item.app.url.path)
+                    }
+                    .width(min: 140, ideal: 220)
+                    TableColumn("Version") { item in
+                        Text(item.app.version ?? "").monospacedDigit().foregroundStyle(.secondary)
+                    }
+                    .width(min: 50, ideal: 90, max: 140)
+                    TableColumn("Homebrew Cask") { item in
+                        if let cask = item.cask {
+                            Text(cask.token).font(.body.monospaced())
+                        } else {
+                            Text("no cask found").foregroundStyle(.tertiary)
+                        }
+                    }
+                    .width(min: 120, ideal: 200)
+                    TableColumn("Cask Version") { item in
+                        if let cask = item.cask {
+                            HStack(spacing: 4) {
+                                Text(cask.version?.split(separator: ",").first.map(String.init) ?? "")
+                                    .monospacedDigit()
+                                    .foregroundStyle(.secondary)
+                                if !item.canAdopt {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundStyle(.orange)
+                                        .help("The installed version differs from the cask, so Homebrew won't adopt the app as it is.")
+                                }
+                            }
+                        }
+                    }
+                    .width(min: 70, ideal: 110, max: 160)
+                    TableColumn("Description") { item in
+                        Text(item.cask?.desc ?? "").foregroundStyle(.secondary).help(item.cask?.desc ?? "")
+                    }
+                    .width(min: 120, ideal: 260)
+                }
+                .contextMenu(forSelectionType: String.self) { ids in
+                    let chosen = items.filter { ids.contains($0.id) }
+                    if chosen.count == 1, let item = chosen.first {
+                        if item.cask != nil {
+                            Button("Adopt with Homebrew…") { pendingAdopt = item }
+                            Button("Reinstall with Homebrew…") { pendingReinstall = item }
+                            Divider()
+                        }
+                        Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([item.app.url]) }
+                    }
+                }
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    Text("Apps from the App Store and apps that come with macOS are not listed.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(.bar)
+                }
+            }
+        }
+        .task { await model.refreshApps() }
+        .toolbar {
+            ToolbarItemGroup {
+                Button {
+                    pendingAdopt = single
+                } label: {
+                    Label("Adopt with Homebrew", systemImage: "arrow.down.app")
+                }
+                .disabled(single?.cask == nil || model.isBusy)
+                .help("Let Homebrew manage the selected app (brew install --cask --adopt)")
+
+                Button {
+                    Task { await model.refreshApps() }
+                } label: {
+                    Label("Refresh", systemImage: "arrow.clockwise")
+                }
+                .disabled(model.loadingApps)
+                .help("Scan Applications again")
+            }
+        }
+        .confirmationDialog(
+            "Adopt \(pendingAdopt?.app.name ?? "") with Homebrew?",
+            isPresented: Binding(get: { pendingAdopt != nil }, set: { if !$0 { pendingAdopt = nil } }),
+            presenting: pendingAdopt
+        ) { item in
+            Button("Adopt and Add to Brewfile") { model.adopt(item, addToBrewfile: true) }
+            Button("Adopt Only") { model.adopt(item, addToBrewfile: false) }
+        } message: { item in
+            if item.canAdopt {
+                Text("Homebrew downloads the cask \(item.cask?.token ?? "") and takes over the existing app without replacing it. From then on you can update it with Homebrew.")
+            } else {
+                Text("The installed version (\(item.app.version ?? "?")) differs from the cask (\(item.cask?.version ?? "?")), so Homebrew will most likely refuse to adopt it. Update the app first, or use Reinstall with Homebrew.")
+            }
+        }
+        .confirmationDialog(
+            "Reinstall \(pendingReinstall?.app.name ?? "") with Homebrew?",
+            isPresented: Binding(get: { pendingReinstall != nil }, set: { if !$0 { pendingReinstall = nil } }),
+            presenting: pendingReinstall
+        ) { item in
+            Button("Reinstall and Add to Brewfile", role: .destructive) { model.reinstallWithHomebrew(item, addToBrewfile: true) }
+            Button("Reinstall Only", role: .destructive) { model.reinstallWithHomebrew(item, addToBrewfile: false) }
+        } message: { item in
+            Text("Homebrew replaces the app in Applications with version \(item.cask?.version ?? "?") from the cask \(item.cask?.token ?? ""). Your settings and data are kept.")
+        }
     }
 }
 

@@ -73,6 +73,12 @@ final class AppModel {
     private(set) var allFormulae: [String] = []
     private(set) var allCasks: [String] = []
 
+    // Apps not managed by Homebrew or the App Store
+    private(set) var unmanagedApps: [UnmanagedApp] = []
+    private(set) var appsLoaded = false
+    private(set) var loadingApps = false
+    @ObservationIgnored private var caskInfoCache: [String: CaskInfo] = [:]
+
     // Jobs
     private(set) var jobs: [Job] = []
     var currentJob: Job? { jobs.last }
@@ -263,6 +269,45 @@ final class AppModel {
         } catch {
             errorMessage = error.localizedDescription
         }
+        if appsLoaded { await refreshApps() }
+    }
+
+    /// Scans /Applications and ~/Applications for apps that Homebrew, the App Store or macOS don't manage,
+    /// and looks up a matching cask for each of them.
+    func refreshApps() async {
+        guard let client, !loadingApps else { return }
+        if !installedLoaded { await refreshInstalled() }
+        guard installedLoaded else { return }
+        loadingApps = true
+        defer { loadingApps = false }
+        // Debugging: BREWGUI_APPS_DIRS=/dir1:/dir2 scans other folders instead of the Applications folders.
+        let directories = ProcessInfo.processInfo.environment["BREWGUI_APPS_DIRS"]
+            .map { $0.split(separator: ":").map { URL(fileURLWithPath: String($0), isDirectory: true) } }
+            ?? InstalledApp.standardDirectories
+        let found = await Task.detached { InstalledApp.scan(directories) }.value
+        var apps = UnmanagedApps.filter(found, installedCasks: installed.casks)
+        // Helper apps installed by a cask's .pkg (e.g. Karabiner-EventViewer) are recognised by the package ID.
+        var packageIDs: [String: [String]] = [:]
+        for app in apps {
+            let output = try? await ProcessRunner.capture(
+                executable: URL(fileURLWithPath: "/usr/sbin/pkgutil"), arguments: ["--file-info", app.url.path],
+                environment: ProcessInfo.processInfo.environment, allowFailure: true)
+            packageIDs[app.id] = UnmanagedApps.parsePackageIDs(output ?? "")
+        }
+        apps = UnmanagedApps.filter(apps, installedCasks: installed.casks, packageIDs: packageIDs)
+        await loadNames()
+        let known = Set(allCasks)
+        var missing: [String] = []
+        for app in apps {
+            for token in CaskTokenGuess.candidates(forAppNamed: app.name)
+            where known.contains(token) && caskInfoCache[token] == nil && !missing.contains(token) {
+                missing.append(token)
+            }
+        }
+        for cask in await client.casks(missing) { caskInfoCache[cask.token] = cask }
+        let suggestions = UnmanagedApps.suggestions(for: apps, casks: Array(caskInfoCache.values))
+        unmanagedApps = apps.map { UnmanagedApp(app: $0, cask: suggestions[$0.id]) }
+        appsLoaded = true
     }
 
     func refreshOutdated() async {
@@ -433,6 +478,22 @@ final class AppModel {
         }
     }
 
+    /// Lets Homebrew take over an app installed by hand (`brew install --cask --adopt`), without replacing it.
+    func adopt(_ item: UnmanagedApp, addToBrewfile: Bool) {
+        guard let cask = item.cask else { return }
+        run(String(localized: "Adopting \(item.app.name)"), ["install", "--cask", "--adopt", cask.token]) { [weak self] succeeded in
+            if succeeded && addToBrewfile { self?.addToBrewfile(kind: .cask, name: cask.token) }
+        }
+    }
+
+    /// Replaces an app installed by hand with the cask's version (`brew install --cask --force`).
+    func reinstallWithHomebrew(_ item: UnmanagedApp, addToBrewfile: Bool) {
+        guard let cask = item.cask else { return }
+        run(String(localized: "Reinstalling \(item.app.name)"), ["install", "--cask", "--force", cask.token]) { [weak self] succeeded in
+            if succeeded && addToBrewfile { self?.addToBrewfile(kind: .cask, name: cask.token) }
+        }
+    }
+
     /// Uninstalls the package and, once that succeeds, removes it from the Brewfile.
     func uninstallAndRemoveFromBrewfile(kind: EntryKind, name: String) {
         uninstall(kind: kind, name: name) { [weak self] succeeded in
@@ -520,6 +581,14 @@ final class AppModel {
         guard let client else { throw CommandError(command: "brew", status: -1, stderr: String(localized: "Homebrew not found.")) }
         return try await client.info(kind: kind, name: name)
     }
+}
+
+/// An app installed by hand, with the cask Homebrew could manage it with (if there is one).
+struct UnmanagedApp: Identifiable, Hashable {
+    var app: InstalledApp
+    var cask: CaskInfo?
+    var id: String { app.id }
+    var canAdopt: Bool { cask.map { UnmanagedApps.canAdopt(app, as: $0) } ?? false }
 }
 
 struct UnmanagedItem: Identifiable, Hashable {

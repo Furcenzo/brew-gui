@@ -28,6 +28,8 @@ xattr -dr com.apple.quarantine "/Applications/Brew GUI.app"
   `cleanup` with a preview before anything is uninstalled, `dump` to a new file.
 - **Updates** – `brew outdated` (including `--greedy`), upgrade selected packages or everything, `brew update`.
 - **Not in Brewfile** – packages, taps and App Store apps installed outside your Brewfile; add them with one click.
+  The *Apps* tab lists apps installed by hand (not via Homebrew or the App Store), finds a matching cask and lets
+  Homebrew adopt them (`brew install --cask --adopt`) or reinstall them from the cask.
 - **Search** – instant search across all formulae and casks with details (`brew info`).
   Installing a package offers to add it to the Brewfile too, uninstalling offers to remove it (applied only
   after `brew` succeeds).
@@ -104,10 +106,11 @@ GitHub Release, using the `## 0.2.0` section of [CHANGELOG.md](CHANGELOG.md) as 
 
 ## Debugging
 
-`BREWGUI_SNAPSHOT=/path.png [BREWGUI_PAGE=sync|outdated|unmanaged|search|missing|casks|check]`
+`BREWGUI_SNAPSHOT=/path.png [BREWGUI_PAGE=sync|outdated|unmanaged|apps|search|missing|casks|check]`
 saves an image of the window once loaded and quits the app (useful without screen recording permission).
 `BREWGUI_FILE=/path/to/Brewfile` opens a different file, `BREWGUI_DEBUG_ADD=name [BREWGUI_DEBUG_UNDO=1]`
 simulates adding an entry (and ⌘Z) – only test this on a copy of your Brewfile.
+`BREWGUI_APPS_DIRS=/dir1:/dir2` scans other folders instead of /Applications and ~/Applications.
 
 ## License
 
