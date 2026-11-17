@@ -85,7 +85,24 @@ struct MenuBarContent: View {
             footer
         }
         .frame(width: 340)
+        .background(PanelWindowReader { window in Self.moveOnScreen(window) })
         .onAppear { searchFocused = true }
+    }
+
+    /// Menu bar managers (Thaw, Ice, Bartender) move hidden items off screen and forward clicks to them,
+    /// so the panel would open off screen too. Then put it under the mouse pointer instead.
+    static func moveOnScreen(_ window: NSWindow) {
+        let frame = window.frame
+        let isVisible = NSScreen.screens.contains { screen in
+            let overlap = screen.visibleFrame.intersection(frame)
+            return overlap.width >= frame.width * 0.9 && overlap.height >= frame.height * 0.5
+        }
+        guard !isVisible else { return }
+        let mouse = NSEvent.mouseLocation
+        guard let screen = NSScreen.screens.first(where: { NSMouseInRect(mouse, $0.frame, false) }) ?? NSScreen.main else { return }
+        let visible = screen.visibleFrame
+        let x = min(max(mouse.x - frame.width / 2, visible.minX + 8), visible.maxX - frame.width - 8)
+        window.setFrameOrigin(NSPoint(x: x, y: visible.maxY - frame.height - 4))
     }
 
     // MARK: Header and footer
@@ -276,6 +293,41 @@ struct MenuBarContent: View {
     /// The menu bar panel stays open after a click; close it when the action leads elsewhere.
     private func closePanel() {
         NSApp.keyWindow?.close()
+    }
+}
+
+/// Reports the panel's window every time the panel opens (after the system has positioned it).
+private struct PanelWindowReader: NSViewRepresentable {
+    let onShow: (NSWindow) -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = WindowObservingView()
+        view.onShow = onShow
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    final class WindowObservingView: NSView {
+        var onShow: ((NSWindow) -> Void)?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            // Selector-based observers are removed automatically when the view goes away.
+            NotificationCenter.default.removeObserver(self)
+            guard let window else { return }
+            NotificationCenter.default.addObserver(
+                self, selector: #selector(windowDidBecomeKey), name: NSWindow.didBecomeKeyNotification, object: window)
+            DispatchQueue.main.async { [weak self] in self?.report() }
+        }
+
+        @objc private func windowDidBecomeKey(_ notification: Notification) {
+            report()
+        }
+
+        private func report() {
+            if let window { onShow?(window) }
+        }
     }
 }
 
