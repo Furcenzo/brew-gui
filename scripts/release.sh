@@ -56,7 +56,7 @@ $CHANGES
 **[Brew-GUI-$VERSION.zip](https://github.com/Furcenzo/brew-gui/releases/download/$TAG/Brew-GUI-$VERSION.zip)** – universal app (Apple silicon + Intel), macOS 15 or later, English and Slovak.
 
 1. Unzip it and move **Brew GUI.app** to /Applications.
-2. The app is not notarized by Apple, so the first launch is blocked by Gatekeeper. Open
+2. Open it. The app is not notarized by Apple, so macOS may refuse to open it. If it does, open
    **System Settings → Privacy & Security** and click **Open Anyway** next to “Brew GUI”, or run:
    \`xattr -dr com.apple.quarantine "/Applications/Brew GUI.app"\`
 

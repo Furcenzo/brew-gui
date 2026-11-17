@@ -28,12 +28,14 @@ Or get the latest **Brew-GUI-x.y.z.zip** from [Releases](https://github.com/Furc
 (universal app for Apple silicon and Intel, macOS 15 or later), unzip it and move **Brew GUI.app** to
 /Applications.
 
-Either way, the app is not notarized by Apple, so macOS blocks the first launch. Open
+Either way, the app is not notarized by Apple, so macOS may refuse to open it. If that happens, open
 **System Settings → Privacy & Security** and click **Open Anyway** next to “Brew GUI”, or run:
 
 ```bash
 xattr -dr com.apple.quarantine "/Applications/Brew GUI.app"
 ```
+
+If the app opens normally, there's nothing else to do.
 
 ## Features
 
