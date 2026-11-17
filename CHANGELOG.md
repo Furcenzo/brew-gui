@@ -5,6 +5,8 @@ version into the GitHub Release notes, so add a section before publishing.
 
 ## Unreleased
 
+## 0.3.0
+
 - **Apps installed outside Homebrew.** *Not in Brewfile → Apps* lists apps in Applications that Homebrew, the App Store or macOS don't manage, shows a matching cask when there is one and lets Homebrew adopt the app (`brew install --cask --adopt`) or reinstall it from the cask.
 
 ## 0.2.0
