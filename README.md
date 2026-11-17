@@ -7,11 +7,26 @@ Available in English and Slovak (follows the macOS language setting).
 
 ## Download
 
-Get the latest **Brew-GUI-x.y.z.zip** from [Releases](https://github.com/Furcenzo/brew-gui/releases/latest)
+With Homebrew:
+
+```bash
+brew install --cask furcenzo/tap/brew-gui
+```
+
+or in a Brewfile:
+
+```ruby
+tap "furcenzo/tap"
+cask "furcenzo/tap/brew-gui", trusted: true
+```
+
+Updates come with `brew upgrade`.
+
+Or get the latest **Brew-GUI-x.y.z.zip** from [Releases](https://github.com/Furcenzo/brew-gui/releases/latest)
 (universal app for Apple silicon and Intel, macOS 15 or later), unzip it and move **Brew GUI.app** to
 /Applications.
 
-The app is not notarized by Apple, so macOS blocks the first launch. Open
+Either way, the app is not notarized by Apple, so macOS blocks the first launch. Open
 **System Settings → Privacy & Security** and click **Open Anyway** next to “Brew GUI”, or run:
 
 ```bash
@@ -94,8 +109,9 @@ project hook).
 ./scripts/release.sh 0.2.0
 ```
 
-builds a universal app and `build/Brew-GUI-0.2.0.zip`; adding `--publish` also tags `v0.2.0` and creates the
-GitHub Release, using the `## 0.2.0` section of [CHANGELOG.md](CHANGELOG.md) as its release notes.
+builds a universal app and `build/Brew-GUI-0.2.0.zip`; adding `--publish` also tags `v0.2.0`, creates the
+GitHub Release (using the `## 0.2.0` section of [CHANGELOG.md](CHANGELOG.md) as its release notes) and updates the
+cask in [Furcenzo/homebrew-tap](https://github.com/Furcenzo/homebrew-tap).
 
 ## Project structure
 

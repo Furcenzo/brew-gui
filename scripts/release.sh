@@ -6,6 +6,7 @@
 #   ./scripts/release.sh 0.2.0            build + zip into build/ (nothing is published)
 #   ./scripts/release.sh 0.2.0 --publish  also tag v0.2.0, push the tag and create a GitHub Release
 #                                         (its "What's new" comes from the "## 0.2.0" section of CHANGELOG.md)
+#                                         and update the cask in the Furcenzo/homebrew-tap repository
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -43,7 +44,8 @@ echo "SHA-256: $SHA"
 [[ "$PUBLISH" == "--publish" ]] || exit 0
 
 NOTES="$(mktemp)"
-trap 'rm -f "$NOTES"' EXIT
+TAP_DIR="$(mktemp -d)"
+trap 'rm -rf "$NOTES" "$TAP_DIR"' EXIT
 cat > "$NOTES" <<EOF
 ## What's new
 
@@ -58,6 +60,8 @@ $CHANGES
    **System Settings → Privacy & Security** and click **Open Anyway** next to “Brew GUI”, or run:
    \`xattr -dr com.apple.quarantine "/Applications/Brew GUI.app"\`
 
+Or install it with Homebrew: \`brew install --cask furcenzo/tap/brew-gui\`
+
 Requires [Homebrew](https://brew.sh).
 
 SHA-256: \`$SHA\`
@@ -66,3 +70,12 @@ EOF
 git tag -a "$TAG" -m "Brew GUI $VERSION"
 git push origin "$TAG"
 gh release create "$TAG" "$ZIP" --title "Brew GUI $VERSION" --notes-file "$NOTES" --generate-notes
+
+# Point the Homebrew cask (brew install --cask furcenzo/tap/brew-gui) at the new release.
+git clone --quiet https://github.com/Furcenzo/homebrew-tap.git "$TAP_DIR"
+CASK="$TAP_DIR/Casks/brew-gui.rb"
+perl -pi -e "s/^  version \".*\"/  version \"$VERSION\"/; s/^  sha256 \".*\"/  sha256 \"$SHA\"/" "$CASK"
+grep -q "version \"$VERSION\"" "$CASK" && grep -q "sha256 \"$SHA\"" "$CASK" || { echo "Updating $CASK failed." >&2; exit 1; }
+git -C "$TAP_DIR" commit --quiet --all --message "brew-gui $VERSION"
+git -C "$TAP_DIR" push --quiet origin HEAD
+echo "Updated furcenzo/tap: brew-gui $VERSION"
