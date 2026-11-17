@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Furcenzo
+
 import SwiftUI
 
 /// Panel na spodku okna – stav poslednej operácie a rozbaliteľný výstup.

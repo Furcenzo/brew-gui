@@ -1,4 +1,6 @@
 #!/bin/zsh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Furcenzo
 # Zostaví release verziu a zabalí ju do build/Brew GUI.app (ad-hoc podpis).
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -18,7 +20,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <dict>
     <key>CFBundleName</key><string>Brew GUI</string>
     <key>CFBundleDisplayName</key><string>Brew GUI</string>
-    <key>CFBundleIdentifier</key><string>local.brewgui</string>
+    <key>CFBundleIdentifier</key><string>io.github.furcenzo.brewgui</string>
     <key>CFBundleExecutable</key><string>BrewGUI</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>${VERSION}</string>

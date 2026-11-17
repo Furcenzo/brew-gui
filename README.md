@@ -1,5 +1,9 @@
 # Brew GUI
 
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+
+*A native macOS app (SwiftUI) for managing Homebrew packages and your Brewfile. The app and documentation are in Slovak.*
+
 Natívna macOS aplikácia (SwiftUI) na správu Homebrew a Brewfile.
 
 ## Čo vie
@@ -52,3 +56,11 @@ swift test
 uloží po načítaní obrázok okna a aplikáciu ukončí (užitočné bez povolenia na nahrávanie obrazovky).
 `BREWGUI_FILE=/cesta/Brewfile` otvorí iný súbor, `BREWGUI_DEBUG_ADD=nazov [BREWGUI_DEBUG_UNDO=1]`
 nasimuluje pridanie položky (a ⌘Z) – testujte len na kópii Brewfile.
+
+## Licencia
+
+Copyright (C) 2026 Furcenzo
+
+Tento program je slobodný softvér: môžete ho šíriť a upravovať podľa podmienok
+[GNU General Public License](LICENSE) vo verzii 3 alebo (podľa vášho výberu) akejkoľvek neskoršej verzie
+(`GPL-3.0-or-later`). Program sa šíri bez akejkoľvek záruky. Plné znenie licencie je v súbore [LICENSE](LICENSE).

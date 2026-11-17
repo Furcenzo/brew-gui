@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Furcenzo
+
 import AppKit
 import BrewCore
 import Observation
@@ -55,7 +58,7 @@ final class AppModel {
     /// Súbor, ktorý sme v tejto session už zálohovali (záloha = stav pred prvým uložením).
     @ObservationIgnored private var backedUpFile: URL?
     @ObservationIgnored private var lastStateRefresh = Date.distantPast
-    @ObservationIgnored private let log = Logger(subsystem: "local.brewgui", category: "state")
+    @ObservationIgnored private let log = Logger(subsystem: "io.github.furcenzo.brewgui", category: "state")
     var isDirty: Bool { brewfile.text != savedText }
     var externalChangeDetected = false
 
@@ -81,6 +84,7 @@ final class AppModel {
     var errorMessage: String?
 
     init() {
+        Self.migrateLegacyDefaults()
         client = BrewClient.locate()
         let stored = UserDefaults.standard.string(forKey: "lastBrewfile").map { URL(fileURLWithPath: $0) }
         if let stored, FileManager.default.fileExists(atPath: stored.path) {
@@ -89,6 +93,18 @@ final class AppModel {
             fileURL = Self.defaultFile
         }
         loadFile(fileURL)
+    }
+
+    /// Staršie verzie mali bundle id `local.brewgui`. Ak nová doména nastavení ešte neexistuje,
+    /// jednorazovo do nej skopírujeme starú (posledný Brewfile, režim zobrazenia, veľkosť okna…).
+    private static func migrateLegacyDefaults() {
+        let legacyID = "local.brewgui"
+        guard let currentID = Bundle.main.bundleIdentifier, currentID != legacyID else { return }
+        let defaults = UserDefaults.standard
+        guard defaults.persistentDomain(forName: currentID) == nil,
+              let legacy = defaults.persistentDomain(forName: legacyID), !legacy.isEmpty
+        else { return }
+        defaults.setPersistentDomain(legacy, forName: currentID)
     }
 
     // MARK: - Súbor
