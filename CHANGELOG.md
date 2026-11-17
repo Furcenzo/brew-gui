@@ -5,6 +5,8 @@ version into the GitHub Release notes, so add a section before publishing.
 
 ## Unreleased
 
+## 0.5.1
+
 - When Brew GUI is opened at login, it starts in the menu bar only, without the window (as long as the menu bar icon is on).
 
 ## 0.5.0
