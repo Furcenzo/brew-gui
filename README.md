@@ -2,65 +2,72 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
-*A native macOS app (SwiftUI) for managing Homebrew packages and your Brewfile. The app and documentation are in Slovak.*
+A native macOS app (SwiftUI) for managing Homebrew packages and your Brewfile.
+The user interface is currently in Slovak.
 
-Natívna macOS aplikácia (SwiftUI) na správu Homebrew a Brewfile.
+## Features
 
-## Čo vie
+- **Brewfile** – a table of every `tap` / `brew` / `cask` / `mas` / … entry with its status
+  (installed, missing, outdated), description and version; filtering by type, search,
+  duplicate highlighting. Add / edit / remove entries, sort the file, plain-text mode.
+  Comments, blank lines and unrecognized Ruby code are preserved untouched when saving.
+- **Sync** – `brew bundle check`, `install` (optionally without upgrading),
+  `cleanup` with a preview before anything is uninstalled, `dump` to a new file.
+- **Updates** – `brew outdated` (including `--greedy`), upgrade selected packages or everything, `brew update`.
+- **Not in Brewfile** – packages, taps and App Store apps installed outside your Brewfile; add them with one click.
+- **Search** – instant search across all formulae and casks with details (`brew info`).
+- **Console** – live output of every operation, with the option to stop it, and a history.
 
-- **Brewfile** – tabuľka všetkých `tap` / `brew` / `cask` / `mas` / … záznamov so stavom
-  (nainštalované, chýba, zastarané), popisom a verziou; filter podľa typu, vyhľadávanie,
-  označenie duplicít. Pridanie / úprava / odstránenie položky, zoradenie súboru, textový režim.
-  Komentáre, prázdne riadky aj neznámy Ruby kód ostávajú pri ukladaní nedotknuté.
-- **Synchronizácia** – `brew bundle check`, `install` (voliteľne bez upgradu),
-  `cleanup` s náhľadom pred odinštalovaním, `dump` do nového súboru.
-- **Aktualizácie** – `brew outdated` (aj `--greedy`), upgrade vybraných alebo všetkého, `brew update`.
-- **Mimo Brewfile** – balíky, tapy a App Store aplikácie nainštalované mimo Brewfile; jedným klikom ich pridáte.
-- **Hľadanie** – okamžité hľadanie vo všetkých formulae a casks s detailom (`brew info`).
-- **Konzola** – živý výstup každej operácie, možnosť zastaviť, história.
+Brewfile changes are saved automatically; undo the last edit with ⌘Z (Edit → Undo).
+Before the first save in each session, the original file is backed up to `~/Library/Application Support/BrewGUI/Backups`.
+If another program changes the Brewfile in the meantime, the app asks whether to reload it or overwrite it.
+The state of installed packages is refreshed every time you switch to the app (at most once every 10 s), after each
+operation, and manually with ⌘R – so it also picks up a `brew install` run in Terminal.
+If a cask needs an administrator password, a system dialog is shown (via `SUDO_ASKPASS`).
 
-Zmeny v Brewfile sa ukladajú automaticky, poslednú úpravu vrátite cez ⌘Z (Úpravy → Späť).
-Pred prvým uložením v každej session sa pôvodný súbor zálohuje do `~/Library/Application Support/BrewGUI/Backups`.
-Ak Brewfile medzitým zmení iný program, aplikácia sa spýta, či ho načítať, alebo prepísať.
-Stav nainštalovaných balíkov sa obnoví pri každom prepnutí do aplikácie (najviac raz za 10 s), po každej
-operácii a ručne cez ⌘R – zachytí tak aj `brew install` spustený v Termináli.
-Ak cask potrebuje heslo správcu, zobrazí sa systémový dialóg (cez `SUDO_ASKPASS`).
+## Requirements
 
-## Spustenie
+- macOS 15 or later
+- [Homebrew](https://brew.sh)
+- Swift 6 toolchain (Xcode 16 or later) to build from source
+
+## Running
 
 ```bash
 swift run BrewGUI
 ```
 
-Zostavenie samostatnej aplikácie do `build/Brew GUI.app`:
+Build a standalone app into `build/Brew GUI.app`:
 
 ```bash
 ./scripts/build-app.sh
 ```
 
-Testy:
+Tests:
 
 ```bash
 swift test
 ```
 
-## Štruktúra
+## Project structure
 
-- `Sources/BrewCore` – parser Brewfile, spúšťanie procesov, obal nad `brew` CLI (bez UI, testované).
-- `Sources/BrewGUI` – SwiftUI aplikácia (`AppModel` + obrazovky).
-- `Tests/BrewCoreTests` – testy parsera a spúšťania procesov.
+- `Sources/BrewCore` – Brewfile parser, process runner, wrapper around the `brew` CLI (no UI, tested).
+- `Sources/BrewGUI` – the SwiftUI app (`AppModel` + screens).
+- `Tests/BrewCoreTests` – tests for the parser and the process runner.
 
-## Ladenie
+## Debugging
 
-`BREWGUI_SNAPSHOT=/cesta.png [BREWGUI_PAGE=sync|outdated|unmanaged|search|missing|casks|check]`
-uloží po načítaní obrázok okna a aplikáciu ukončí (užitočné bez povolenia na nahrávanie obrazovky).
-`BREWGUI_FILE=/cesta/Brewfile` otvorí iný súbor, `BREWGUI_DEBUG_ADD=nazov [BREWGUI_DEBUG_UNDO=1]`
-nasimuluje pridanie položky (a ⌘Z) – testujte len na kópii Brewfile.
+`BREWGUI_SNAPSHOT=/path.png [BREWGUI_PAGE=sync|outdated|unmanaged|search|missing|casks|check]`
+saves an image of the window once loaded and quits the app (useful without screen recording permission).
+`BREWGUI_FILE=/path/to/Brewfile` opens a different file, `BREWGUI_DEBUG_ADD=name [BREWGUI_DEBUG_UNDO=1]`
+simulates adding an entry (and ⌘Z) – only test this on a copy of your Brewfile.
 
-## Licencia
+## License
 
 Copyright (C) 2026 Furcenzo
 
-Tento program je slobodný softvér: môžete ho šíriť a upravovať podľa podmienok
-[GNU General Public License](LICENSE) vo verzii 3 alebo (podľa vášho výberu) akejkoľvek neskoršej verzie
-(`GPL-3.0-or-later`). Program sa šíri bez akejkoľvek záruky. Plné znenie licencie je v súbore [LICENSE](LICENSE).
+This program is free software: you can redistribute it and/or modify it under the terms of the
+[GNU General Public License](LICENSE) as published by the Free Software Foundation, either version 3
+of the License, or (at your option) any later version (`GPL-3.0-or-later`).
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY.
+See the [LICENSE](LICENSE) file for the full text.
