@@ -14,6 +14,9 @@ struct PackageInfoView: View {
     @State private var info: PackageInfo?
     @State private var error: String?
     @State private var confirmUninstall = false
+    @State private var confirmInstall = false
+
+    private var inBrewfile: Bool { model.brewfile.contains(kind: kind, name: name) }
 
     var body: some View {
         Group {
@@ -39,7 +42,24 @@ struct PackageInfoView: View {
             error = nil
         }
         .confirmationDialog("Uninstall \(name)?", isPresented: $confirmUninstall) {
-            Button("Uninstall", role: .destructive) { model.uninstall(kind: kind, name: name) }
+            if inBrewfile {
+                Button("Uninstall and Remove from Brewfile", role: .destructive) {
+                    model.uninstallAndRemoveFromBrewfile(kind: kind, name: name)
+                }
+                Button("Uninstall, Keep in Brewfile", role: .destructive) { model.uninstall(kind: kind, name: name) }
+            } else {
+                Button("Uninstall", role: .destructive) { model.uninstall(kind: kind, name: name) }
+            }
+        } message: {
+            if inBrewfile {
+                Text("\(name) is listed in the Brewfile. If you keep it there, `brew bundle install` will install it again.")
+            }
+        }
+        .confirmationDialog("Add \(name) to the Brewfile too?", isPresented: $confirmInstall) {
+            Button("Install and Add to Brewfile") { model.installAndAddToBrewfile(kind: kind, name: name) }
+            Button("Install Only") { model.install(kind: kind, name: name) }
+        } message: {
+            Text("It will be added once the installation succeeds.")
         }
     }
 
@@ -114,7 +134,6 @@ struct PackageInfoView: View {
     }
 
     private func actions(_ info: PackageInfo) -> some View {
-        let inBrewfile = model.brewfile.contains(kind: info.kind, name: name)
         let installed = info.installedVersion != nil
         let outdated: Bool = switch info {
         case .formula(let f): f.outdated == true
@@ -130,7 +149,9 @@ struct PackageInfoView: View {
                 }
                 Button("Uninstall…") { confirmUninstall = true }
             } else {
-                Button("Install") { model.install(kind: info.kind, name: name) }
+                Button("Install") {
+                    if inBrewfile { model.install(kind: kind, name: name) } else { confirmInstall = true }
+                }
                     .buttonStyle(.borderedProminent)
             }
             if showsBrewfileButton {

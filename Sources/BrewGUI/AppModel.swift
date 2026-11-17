@@ -225,6 +225,13 @@ final class AppModel {
         brewfile.add(BrewfileEntry(kind: kind, name: name))
     }
 
+    /// Removes every Brewfile entry for the package (including duplicates).
+    func removeFromBrewfile(kind: EntryKind, name: String) {
+        let key = BrewfileEntry(kind: kind, name: name).identityKey
+        let ids = Set(brewfile.entries.filter { $0.identityKey == key }.map(\.id))
+        if !ids.isEmpty { brewfile.remove(ids: ids) }
+    }
+
     // MARK: - State
 
     func refreshAll() async {
@@ -392,13 +399,14 @@ final class AppModel {
 
     // MARK: - Operations
 
-    func install(_ entry: BrewfileEntry) {
+    /// `onFinish` is called with `true` when the operation succeeded.
+    func install(_ entry: BrewfileEntry, onFinish: (@MainActor (Bool) -> Void)? = nil) {
         switch entry.kind {
-        case .tap: run("Tap \(entry.name)", ["tap", entry.name])
-        case .brew: run(String(localized: "Installing \(entry.name)"), ["install", "--formula", entry.name])
-        case .cask: run(String(localized: "Installing \(entry.name)"), ["install", "--cask", entry.name])
+        case .tap: run("Tap \(entry.name)", ["tap", entry.name], onFinish: onFinish)
+        case .brew: run(String(localized: "Installing \(entry.name)"), ["install", "--formula", entry.name], onFinish: onFinish)
+        case .cask: run(String(localized: "Installing \(entry.name)"), ["install", "--cask", entry.name], onFinish: onFinish)
         case .mas:
-            if let id = entry.masID { runMas(String(localized: "Installing \(entry.name)"), ["install", id]) }
+            if let id = entry.masID { runMas(String(localized: "Installing \(entry.name)"), ["install", id], onFinish: onFinish) }
         default: break
         }
     }
@@ -407,13 +415,28 @@ final class AppModel {
         install(BrewfileEntry(kind: kind, name: name))
     }
 
-    func uninstall(kind: EntryKind, name: String) {
+    /// Installs the package and, once the installation succeeds, adds it to the Brewfile.
+    func installAndAddToBrewfile(kind: EntryKind, name: String) {
+        install(BrewfileEntry(kind: kind, name: name)) { [weak self] succeeded in
+            if succeeded { self?.addToBrewfile(kind: kind, name: name) }
+        }
+    }
+
+    /// `onFinish` is called with `true` when the operation succeeded.
+    func uninstall(kind: EntryKind, name: String, onFinish: (@MainActor (Bool) -> Void)? = nil) {
         switch kind {
-        case .tap: run("Untap \(name)", ["untap", name])
-        case .brew: run(String(localized: "Uninstalling \(name)"), ["uninstall", "--formula", name])
-        case .cask: run(String(localized: "Uninstalling \(name)"), ["uninstall", "--cask", name])
-        case .mas: runMas(String(localized: "Uninstalling \(name)"), ["uninstall", name])
+        case .tap: run("Untap \(name)", ["untap", name], onFinish: onFinish)
+        case .brew: run(String(localized: "Uninstalling \(name)"), ["uninstall", "--formula", name], onFinish: onFinish)
+        case .cask: run(String(localized: "Uninstalling \(name)"), ["uninstall", "--cask", name], onFinish: onFinish)
+        case .mas: runMas(String(localized: "Uninstalling \(name)"), ["uninstall", name], onFinish: onFinish)
         default: break
+        }
+    }
+
+    /// Uninstalls the package and, once that succeeds, removes it from the Brewfile.
+    func uninstallAndRemoveFromBrewfile(kind: EntryKind, name: String) {
+        uninstall(kind: kind, name: name) { [weak self] succeeded in
+            if succeeded { self?.removeFromBrewfile(kind: kind, name: name) }
         }
     }
 
@@ -453,7 +476,7 @@ final class AppModel {
     }
 
     /// `mas` uses the same mechanism – it runs as an external command with the `brew` environment.
-    private func runMas(_ title: String, _ args: [String]) {
+    private func runMas(_ title: String, _ args: [String], onFinish: (@MainActor (Bool) -> Void)? = nil) {
         guard let client else { return }
         let mas = client.brewURL.deletingLastPathComponent().appendingPathComponent("mas")
         guard FileManager.default.isExecutableFile(atPath: mas.path) else {
@@ -477,6 +500,8 @@ final class AppModel {
                 job.state = .failed(-1)
             }
             if job.state == .running { job.state = .cancelled }
+            if job.state != .succeeded { self?.consoleExpanded = true }
+            onFinish?(job.state == .succeeded)
             await self?.refreshInstalled()
         }
     }

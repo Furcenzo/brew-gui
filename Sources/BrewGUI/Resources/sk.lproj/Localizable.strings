@@ -1,11 +1,13 @@
 /* Slovak translation of Brew GUI.
    Keys are the English texts from the source code. Run scripts/check-localization.sh after changes. */
 
+"%@ is listed in the Brewfile. If you keep it there, `brew bundle install` will install it again." = "%@ je v Brewfile. Ak ho tam necháte, `brew bundle install` ho znovu nainštaluje.";
 "%@ — edited" = "%@ — upravené";
 "%lld formulae and %lld casks" = "%lld formulae a %lld casks";
 "--greedy: include casks that update themselves" = "--greedy: zahrnúť casks, ktoré sa aktualizujú samé";
 "A list of packages you have installed that are missing from the Brewfile." = "Zoznam balíkov, ktoré máte nainštalované, ale v Brewfile chýbajú.";
 "Add" = "Pridať";
+"Add %@ to the Brewfile too?" = "Pridať %@ aj do Brewfile?";
 "Add an entry to the Brewfile" = "Pridať položku do Brewfile";
 "Add Entry" = "Pridať položku";
 "Add Installed Packages to Brewfile" = "Pridať nainštalované do Brewfile";
@@ -89,8 +91,10 @@
 "In Brewfile" = "V Brewfile";
 "Include Self-Updating Casks" = "Aj samoaktualizujúce sa casks";
 "Install" = "Nainštalovať";
+"Install and Add to Brewfile" = "Nainštalovať a pridať do Brewfile";
 "Install Missing" = "Nainštalovať chýbajúce";
 "Install Missing (%lld)" = "Nainštalovať chýbajúce (%lld)";
+"Install Only" = "Len nainštalovať";
 "Install Right Away" = "Hneď aj nainštalovať";
 "Installed" = "Nainštalované";
 "Installed Outside the Brewfile" = "Nainštalované mimo Brewfile";
@@ -100,6 +104,7 @@
 "it does not build" = "nedá sa zostaviť";
 "it fails the Gatekeeper check" = "neprejde kontrolou Gatekeeper";
 "it has no license" = "chýba licencia";
+"It will be added once the installation succeeds." = "Pridá sa, keď inštalácia úspešne skončí.";
 "Keep File on Disk" = "Ponechať súbor na disku";
 "Keg-only" = "Keg-only";
 "Latest Version" = "Najnovšia";
@@ -190,7 +195,7 @@
 "the repository has been removed" = "repozitár bol odstránený";
 "the repository is archived" = "repozitár je archivovaný";
 "This entry is already in the Brewfile." = "Táto položka už v Brewfile je.";
-"This runs `brew uninstall` for %@ %@. The Brewfile entry stays until you remove it." = "Spustí sa `brew uninstall` pre %@ %@. Záznam v Brewfile ostane, kým ho neodstránite.";
+"This runs `brew uninstall` for %@ %@. If you keep the Brewfile entry, `brew bundle install` will install it again." = "Spustí sa `brew uninstall` pre %@ %@. Ak záznam v Brewfile necháte, `brew bundle install` ho znovu nainštaluje.";
 "Type" = "Typ";
 "Undo" = "Späť";
 "Undo the last change (⌘Z). Changes are saved automatically." = "Vrátiť poslednú úpravu (⌘Z). Zmeny sa ukladajú automaticky.";
@@ -198,6 +203,7 @@
 "Uninstall %@?" = "Odinštalovať %@?";
 "Uninstall and Remove from Brewfile" = "Odinštalovať a odstrániť z Brewfile";
 "Uninstall selected items (%lld)?" = "Odinštalovať vybrané položky (%lld)?";
+"Uninstall, Keep in Brewfile" = "Odinštalovať, ponechať v Brewfile";
 "Uninstalling %@" = "Odinštalovanie %@";
 "Uninstall…" = "Odinštalovať…";
 "Unsaved changes" = "Neuložené zmeny";

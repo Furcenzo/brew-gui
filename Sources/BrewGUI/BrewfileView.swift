@@ -56,13 +56,15 @@ struct BrewfileView: View {
             isPresented: Binding(get: { pendingUninstall != nil }, set: { if !$0 { pendingUninstall = nil } }),
             presenting: pendingUninstall
         ) { entry in
-            Button("Uninstall", role: .destructive) { model.uninstall(kind: entry.kind, name: entry.kind == .mas ? (entry.masID ?? entry.name) : entry.name) }
+            let target = entry.kind == .mas ? (entry.masID ?? entry.name) : entry.name
             Button("Uninstall and Remove from Brewfile", role: .destructive) {
-                model.uninstall(kind: entry.kind, name: entry.kind == .mas ? (entry.masID ?? entry.name) : entry.name)
-                model.remove(ids: [entry.id])
+                model.uninstall(kind: entry.kind, name: target) { succeeded in
+                    if succeeded { model.remove(ids: [entry.id]) }
+                }
             }
+            Button("Uninstall, Keep in Brewfile", role: .destructive) { model.uninstall(kind: entry.kind, name: target) }
         } message: { entry in
-            Text("This runs `brew uninstall` for \(entry.kind.title.lowercased()) \(entry.name). The Brewfile entry stays until you remove it.")
+            Text("This runs `brew uninstall` for \(entry.kind.title.lowercased()) \(entry.name). If you keep the Brewfile entry, `brew bundle install` will install it again.")
         }
         .onChange(of: kindFilter) { selection.removeAll() }
     }
@@ -182,7 +184,7 @@ struct BrewfileView: View {
         } else if !entries.isEmpty {
             let missing = entries.filter { model.status(of: $0) == .missing }
             if !missing.isEmpty {
-                Button("Install Missing (\(missing.count))") { missing.forEach(model.install) }
+                Button("Install Missing (\(missing.count))") { missing.forEach { model.install($0) } }
             }
         }
         if !entries.isEmpty {

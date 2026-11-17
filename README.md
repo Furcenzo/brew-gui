@@ -29,6 +29,8 @@ xattr -dr com.apple.quarantine "/Applications/Brew GUI.app"
 - **Updates** – `brew outdated` (including `--greedy`), upgrade selected packages or everything, `brew update`.
 - **Not in Brewfile** – packages, taps and App Store apps installed outside your Brewfile; add them with one click.
 - **Search** – instant search across all formulae and casks with details (`brew info`).
+  Installing a package offers to add it to the Brewfile too, uninstalling offers to remove it (applied only
+  after `brew` succeeds).
 - **Console** – live output of every operation, with the option to stop it, and a history.
 
 Brewfile changes are saved automatically; undo the last edit with ⌘Z (Edit → Undo).
