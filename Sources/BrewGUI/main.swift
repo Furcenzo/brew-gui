@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Furcenzo
 
 import AppKit
+import BrewCore
 import SwiftUI
 
 @MainActor
@@ -26,6 +27,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         scheduleDebugSnapshot()
         model.autoUpdateOnLaunch()
+    }
+
+    /// `brew:ripgrep:15.1.0:15.2.0,cask:visual-studio-code:1.145.0:1.146.0` → packages for the Updates list.
+    private static func sampleOutdated(_ spec: String) -> [OutdatedPackage] {
+        spec.split(separator: ",").compactMap { item in
+            let parts = item.split(separator: ":").map(String.init)
+            guard parts.count == 4 else { return nil }
+            let json = ["name": parts[1], "installed_versions": [parts[2]], "current_version": parts[3]] as [String: Any]
+            let decoder = JSONDecoder()
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
+            guard let data = try? JSONSerialization.data(withJSONObject: json),
+                  var package = try? decoder.decode(OutdatedPackage.self, from: data) else { return nil }
+            package.isCask = parts[0] == "cask"
+            return package
+        }
     }
 
     /// macOS marks the launch of a login item in the "open application" Apple event.
@@ -54,6 +70,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         default: break
         }
         model.debugSelectEntry = env["BREWGUI_SELECT"]
+        model.debugAppsFromBrewfile = env["BREWGUI_APPS_FROM_BREWFILE"] == "1"
+        if let sample = env["BREWGUI_SAMPLE_OUTDATED"] {
+            model.debugOutdated = Self.sampleOutdated(sample)
+        }
         model.debugDisplayPath = env["BREWGUI_DISPLAY_PATH"]
         if let query = env["BREWGUI_SEARCH"] {
             model.pendingSearchQuery = query
@@ -91,9 +111,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if env["BREWGUI_PAGE"] == "menubar" {
             let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 340, height: 520),
                                 styleMask: [.borderless], backing: .buffered, defer: false)
+            panel.isOpaque = false
+            panel.backgroundColor = .clear
             panel.contentView = NSHostingView(rootView: MenuBarContent(query: env["BREWGUI_MENUBAR_QUERY"] ?? "")
                 .environment(model)
-                .background(.regularMaterial))
+                .background(.regularMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 12)))
             panel.setContentSize(panel.contentView?.fittingSize ?? panel.frame.size)
             panel.center()
             panel.orderFrontRegardless()

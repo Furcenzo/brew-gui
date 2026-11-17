@@ -28,8 +28,12 @@ shot() {
     env BREWGUI_SNAPSHOT="$WORK/$file" BREWGUI_FILE="$SAMPLE" BREWGUI_APPEARANCE="$appearance" \
         BREWGUI_WINDOW_SIZE=1280x800 BREWGUI_DISPLAY_PATH="~/Brewfile" BREWGUI_DELAY=8 "$@" \
         "$APP/Contents/MacOS/BrewGUI" -AppleLanguages "($language)" -autoUpdateEnabled NO >/dev/null 2>&1
-    # 2× pixels are more than the README needs; keep the files small.
-    sips --resampleWidth 1920 "$WORK/$file" --out "$OUT/$file" >/dev/null
+    # 2× pixels are more than the README needs; keep the files small (narrow images stay as they are).
+    if (( $(sips -g pixelWidth "$WORK/$file" | awk '/pixelWidth/ { print $2 }') > 1920 )); then
+        sips --resampleWidth 1920 "$WORK/$file" --out "$OUT/$file" >/dev/null
+    else
+        cp "$WORK/$file" "$OUT/$file"
+    fi
     echo "$OUT/$file"
 }
 
@@ -38,3 +42,8 @@ shot brewfile-dark.png dark en BREWGUI_SELECT=ripgrep
 shot sync-dark.png dark en BREWGUI_PAGE=sync
 shot search-light.png light en BREWGUI_SEARCH=iina
 shot brewfile-sk-light.png light sk BREWGUI_SELECT=neovim
+
+# Menu bar panel: sample updates and only the apps from the sample Brewfile.
+SAMPLE_OUTDATED="brew:gh:2.103.0:2.104.0,brew:neovim:0.12.5:0.12.6,cask:visual-studio-code:1.145.0:1.146.0"
+shot menubar-light.png light en BREWGUI_PAGE=menubar BREWGUI_APPS_FROM_BREWFILE=1 BREWGUI_SAMPLE_OUTDATED="$SAMPLE_OUTDATED"
+shot menubar-search-dark.png dark en BREWGUI_PAGE=menubar BREWGUI_APPS_FROM_BREWFILE=1 BREWGUI_MENUBAR_QUERY=code

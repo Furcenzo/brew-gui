@@ -104,6 +104,10 @@ final class AppModel {
 
     // Debugging (scripts/screenshots.sh): picked up once by BrewfileView
     var debugSelectEntry: String?
+    /// Shown instead of `brew outdated` (BREWGUI_SAMPLE_OUTDATED).
+    @ObservationIgnored var debugOutdated: [OutdatedPackage]?
+    /// Only list the apps of casks that are in the open Brewfile (BREWGUI_APPS_FROM_BREWFILE).
+    @ObservationIgnored var debugAppsFromBrewfile = false
     /// Shown instead of the real path of the Brewfile (BREWGUI_DISPLAY_PATH, e.g. `~/Brewfile` for screenshots).
     var debugDisplayPath: String?
 
@@ -288,7 +292,8 @@ final class AppModel {
             installed = try await client.installedState()
             installedLoaded = true
             let casks = installed.casks
-            caskApps = await Task.detached { CaskApp.find(in: casks) }.value
+            let apps = await Task.detached { CaskApp.find(in: casks) }.value
+            caskApps = debugAppsFromBrewfile ? apps.filter { brewfile.contains(kind: .cask, name: $0.token) } : apps
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -338,7 +343,8 @@ final class AppModel {
         loadingOutdated = true
         defer { loadingOutdated = false }
         do {
-            outdated = try await client.outdated(greedy: greedyOutdated)
+            let packages = try await client.outdated(greedy: greedyOutdated)
+            outdated = debugOutdated ?? packages
             outdatedLoaded = true
         } catch {
             errorMessage = error.localizedDescription

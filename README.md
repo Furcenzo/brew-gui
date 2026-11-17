@@ -78,6 +78,10 @@ If a cask needs an administrator password, a system dialog is shown (via `SUDO_A
 |---|---|
 | ![Sync: brew bundle check, install, cleanup and dump](docs/screenshots/sync-dark.png) | ![Search with package details](docs/screenshots/search-light.png) |
 
+| Menu bar | Menu bar search |
+|---|---|
+| <img src="docs/screenshots/menubar-light.png" width="340" alt="Menu bar panel with available updates and Homebrew apps"> | <img src="docs/screenshots/menubar-search-dark.png" width="340" alt="Searching packages and apps from the menu bar"> |
+
 | Slovak |
 |---|
 | ![The Brewfile table in Slovak](docs/screenshots/brewfile-sk-light.png) |
@@ -161,7 +165,9 @@ simulates adding an entry (and ⌘Z) – only test this on a copy of your Brewfi
 `BREWGUI_PAGE=menubar` captures the menu bar panel (`BREWGUI_MENUBAR_QUERY=<text>` types into its search field).
 For screenshots: `BREWGUI_APPEARANCE=light|dark`, `BREWGUI_WINDOW_SIZE=1280x800`, `BREWGUI_SELECT=<entry>`
 (selects it in the Brewfile table), `BREWGUI_SEARCH=<package>` (opens it in Search) and
-`BREWGUI_DISPLAY_PATH=~/Brewfile` (path shown instead of the real one).
+`BREWGUI_DISPLAY_PATH=~/Brewfile` (path shown instead of the real one),
+`BREWGUI_SAMPLE_OUTDATED=brew:gh:2.103.0:2.104.0,cask:…` (sample updates) and `BREWGUI_APPS_FROM_BREWFILE=1`
+(the menu bar lists only apps of casks in the open Brewfile).
 
 ## License
 
