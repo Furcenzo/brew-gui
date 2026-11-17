@@ -517,14 +517,23 @@ public struct BrewClient: Sendable {
         throw CommandError(command: "brew " + args.joined(separator: " "), status: 0, stderr: String(localized: "Package not found."))
     }
 
-    /// `brew info` for the given cask tokens (in batches). Batches that fail are skipped.
+    /// `brew info` for the given cask tokens, in batches. One bad token (e.g. a cask from a tap Homebrew
+    /// doesn't trust, or one that no longer exists) makes `brew` reject the whole batch, so a failed batch
+    /// is retried token by token and only the failing tokens are skipped.
     public func casks(_ tokens: [String]) async -> [CaskInfo] {
+        func load(_ batch: [String]) async -> [CaskInfo]? {
+            guard let text = try? await capture(["info", "--json=v2", "--cask"] + batch),
+                  let response = try? Self.decoder.decode(InfoResponse.self, from: Data(text.utf8)) else { return nil }
+            return response.casks
+        }
         var result: [CaskInfo] = []
         for start in stride(from: 0, to: tokens.count, by: 50) {
             let batch = Array(tokens[start..<min(start + 50, tokens.count)])
-            guard let text = try? await capture(["info", "--json=v2", "--cask"] + batch),
-                  let response = try? Self.decoder.decode(InfoResponse.self, from: Data(text.utf8)) else { continue }
-            result += response.casks
+            if let casks = await load(batch) {
+                result += casks
+            } else if batch.count > 1 {
+                for token in batch { result += await load([token]) ?? [] }
+            }
         }
         return result
     }

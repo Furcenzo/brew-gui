@@ -5,6 +5,11 @@ version into the GitHub Release notes, so add a section before publishing.
 
 ## Unreleased
 
+## 0.3.1
+
+- **Cask suggestions are more reliable.** A single cask Homebrew refuses to load (for example from a tap you don't trust, or one that was removed) no longer hides the suggestions for other apps in *Not in Brewfile → Apps*.
+- Brew GUI can now be installed and updated with Homebrew: `brew install --cask furcenzo/tap/brew-gui`.
+
 ## 0.3.0
 
 - **Apps installed outside Homebrew.** *Not in Brewfile → Apps* lists apps in Applications that Homebrew, the App Store or macOS don't manage, shows a matching cask when there is one and lets Homebrew adopt the app (`brew install --cask --adopt`) or reinstall it from the cask.

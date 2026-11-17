@@ -8,6 +8,13 @@ import Testing
 /// Calls the real `brew` – runs only with `BREWGUI_INTEGRATION=1 swift test`.
 @Suite(.enabled(if: ProcessInfo.processInfo.environment["BREWGUI_INTEGRATION"] == "1"))
 struct IntegrationTests {
+    @Test func caskBatchSurvivesUnknownToken() async throws {
+        let client = try #require(BrewClient.locate())
+        let casks = await client.casks(["firefox", "definitely-not-a-cask-brewgui-test"])
+        #expect(casks.map(\.token) == ["firefox"])
+        #expect(casks.first?.appFileNames.contains("firefox.app") == true)
+    }
+
     @Test func deprecatedCaskHasWarning() async throws {
         let client = try #require(BrewClient.locate())
         let official = try await client.info(kind: .cask, name: "whisky")
