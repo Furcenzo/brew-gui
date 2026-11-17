@@ -3,7 +3,7 @@
 
 import Foundation
 
-/// Typ záznamu v Brewfile (kľúčové slovo na začiatku riadku).
+/// Kind of a Brewfile entry (the keyword at the start of the line).
 public enum EntryKind: String, CaseIterable, Sendable, Hashable, Codable {
     case tap, brew, cask, mas, vscode, go, cargo, uv, npm, krew, flatpak, whalebrew, winget
 
@@ -47,24 +47,24 @@ public enum EntryKind: String, CaseIterable, Sendable, Hashable, Codable {
         }
     }
 
-    /// Poradie, v akom `brew bundle dump` zapisuje typy.
+    /// The order in which `brew bundle dump` writes the kinds.
     public var sortOrder: Int { Self.allCases.firstIndex(of: self) ?? 99 }
 
-    /// Typy, ktoré Brew GUI vie inštalovať / kontrolovať priamo.
+    /// Kinds that Brew GUI can install / check directly.
     public var isManaged: Bool { [.tap, .brew, .cask, .mas].contains(self) }
 }
 
-/// Jeden záznam typu `brew "name", args: [...] # komentár`.
+/// A single entry such as `brew "name", args: [...] # comment`.
 public struct BrewfileEntry: Identifiable, Hashable, Sendable {
     public var id: UUID
     public var kind: EntryKind
     public var name: String
-    /// Ruby argumenty za názvom, bez úvodnej čiarky (napr. `id: 497799835`).
+    /// Ruby arguments after the name, without the leading comma (e.g. `id: 497799835`).
     public var options: String
-    /// Komentár na konci riadku (bez `#`).
+    /// Comment at the end of the line (without `#`).
     public var comment: String?
 
-    /// Pôvodný text riadku a hodnoty polí v čase načítania – kvôli zachovaniu formátovania.
+    /// Original line text and field values at load time – used to preserve formatting.
     fileprivate var original: (line: String, fields: Fields)?
 
     fileprivate struct Fields: Hashable {
@@ -84,23 +84,23 @@ public struct BrewfileEntry: Identifiable, Hashable, Sendable {
         self.comment = comment
     }
 
-    /// Kľúč na hľadanie duplicít.
+    /// Key used to find duplicates.
     public var identityKey: String { "\(kind.rawValue):\(name.lowercased())" }
 
-    /// Krátky názov bez tap prefixu (`user/tap/foo` → `foo`).
+    /// Short name without the tap prefix (`user/tap/foo` → `foo`).
     public var shortName: String {
         guard kind == .brew || kind == .cask else { return name }
         return name.split(separator: "/").last.map(String.init) ?? name
     }
 
-    /// App Store ID pre `mas` záznamy (`id: 123`).
+    /// App Store ID for `mas` entries (`id: 123`).
     public var masID: String? {
         guard kind == .mas else { return nil }
         guard let range = options.range(of: #"id:\s*(\d+)"#, options: .regularExpression) else { return nil }
         return options[range].filter(\.isNumber)
     }
 
-    /// Riadok tak, ako bude zapísaný do súboru.
+    /// The line as it will be written to the file.
     public var line: String {
         if let original, original.fields == fields { return original.line }
         var result = "\(kind.rawValue) \"\(name.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\""))\""
@@ -119,7 +119,7 @@ public struct BrewfileEntry: Identifiable, Hashable, Sendable {
         hasher.combine(fields)
     }
 
-    /// Rozparsuje jeden riadok. Vráti `nil`, ak nejde o známy záznam.
+    /// Parses a single line. Returns `nil` if it isn't a known entry.
     public static func parse(line: String) -> BrewfileEntry? {
         let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let separator = trimmed.firstIndex(where: { $0 == " " || $0 == "\t" }) else { return nil }
@@ -145,7 +145,7 @@ public struct BrewfileEntry: Identifiable, Hashable, Sendable {
         var options = code.trimmingCharacters(in: .whitespaces)
         if options.hasPrefix(",") { options.removeFirst() }
         options = options.trimmingCharacters(in: .whitespaces)
-        // Niečo iné než argumenty (napr. `if OS.mac?`) – radšej necháme riadok ako surový text.
+        // Something other than arguments (e.g. `if OS.mac?`) – keep the line as raw text to be safe.
         if !options.isEmpty, !code.trimmingCharacters(in: .whitespaces).hasPrefix(",") { return nil }
 
         var entry = BrewfileEntry(kind: kind, name: name, options: options, comment: comment)
@@ -153,7 +153,7 @@ public struct BrewfileEntry: Identifiable, Hashable, Sendable {
         return entry
     }
 
-    /// Rozdelí text na kód a komentár (`#` mimo úvodzoviek).
+    /// Splits text into code and comment (`#` outside quotes).
     static func splitComment(_ text: String) -> (code: String, comment: String?) {
         var quote: Character?
         var escaped = false
@@ -174,7 +174,7 @@ public struct BrewfileEntry: Identifiable, Hashable, Sendable {
     }
 }
 
-/// Celý Brewfile – zachováva komentáre, prázdne riadky aj neznámy Ruby kód.
+/// A whole Brewfile – preserves comments, blank lines and unknown Ruby code.
 public struct Brewfile: Hashable, Sendable {
     public enum Line: Hashable, Sendable {
         case entry(BrewfileEntry)
@@ -221,7 +221,7 @@ public struct Brewfile: Hashable, Sendable {
         return entries.contains { $0.identityKey == key }
     }
 
-    /// ID záznamov, ktoré sú duplicitné (druhý a ďalší výskyt).
+    /// IDs of duplicate entries (second and later occurrences).
     public var duplicateIDs: Set<UUID> {
         var seen = Set<String>()
         var duplicates = Set<UUID>()
@@ -240,7 +240,7 @@ public struct Brewfile: Hashable, Sendable {
         lines.removeAll { if case .entry(let e) = $0 { ids.contains(e.id) } else { false } }
     }
 
-    /// Pridá záznam za posledný záznam rovnakého typu, inak na koniec.
+    /// Adds an entry after the last entry of the same kind, otherwise at the end.
     public mutating func add(_ entry: BrewfileEntry) {
         if let index = lines.lastIndex(where: { if case .entry(let e) = $0 { e.kind == entry.kind } else { false } }) {
             lines.insert(.entry(entry), at: index + 1)
@@ -253,8 +253,8 @@ public struct Brewfile: Hashable, Sendable {
         }
     }
 
-    /// Zoradí záznamy podľa typu a názvu. Komentáre tesne nad záznamom sa presunú s ním,
-    /// ostatný Ruby kód ostane navrchu, medzi typmi sa vloží prázdny riadok.
+    /// Sorts entries by kind and name. Comments directly above an entry move with it,
+    /// other Ruby code stays at the top, and a blank line separates the kinds.
     public mutating func sort(removeDuplicates: Bool = false) {
         var header: [Line] = []
         var blocks: [(entry: BrewfileEntry, comments: [String])] = []
@@ -268,10 +268,10 @@ public struct Brewfile: Hashable, Sendable {
             case .raw(let raw):
                 let trimmed = raw.trimmingCharacters(in: .whitespaces)
                 if trimmed.hasPrefix("#") {
-                    // Komentáre pred prvým záznamom sú hlavička súboru a ostávajú navrchu.
+                    // Comments before the first entry are the file header and stay at the top.
                     if blocks.isEmpty { header.append(.raw(raw)) } else { pendingComments.append(raw) }
                 } else if trimmed.isEmpty {
-                    // Komentár oddelený prázdnym riadkom nepatrí k záznamu.
+                    // A comment separated by a blank line doesn't belong to the entry.
                     if blocks.isEmpty { header += pendingComments.map(Line.raw) }
                     pendingComments = []
                     if blocks.isEmpty, !header.isEmpty, header.last != .raw("") { header.append(.raw("")) }

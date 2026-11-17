@@ -9,20 +9,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = AppModel()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Pri spustení cez `swift run` nemá proces bundle – urobíme z neho riadnu aplikáciu s ikonou v Docku.
+        // When started via `swift run` the process has no bundle – turn it into a regular app with a Dock icon.
         NSApp.setActivationPolicy(.regular)
         NSApp.activate()
         scheduleDebugSnapshot()
     }
 
-    /// Ladenie: `BREWGUI_SNAPSHOT=/cesta.png [BREWGUI_PAGE=sync|outdated|unmanaged|search|missing]`
-    /// uloží po načítaní obrázok okna (bez potreby povolenia na nahrávanie obrazovky) a ukončí appku.
+    /// Debugging: `BREWGUI_SNAPSHOT=/path.png [BREWGUI_PAGE=sync|outdated|unmanaged|search|missing]`
+    /// saves an image of the window once loaded (no screen recording permission needed) and quits the app.
     private func scheduleDebugSnapshot() {
         let env = ProcessInfo.processInfo.environment
         guard let path = env["BREWGUI_SNAPSHOT"] else { return }
         if let file = env["BREWGUI_FILE"] { model.loadFile(URL(fileURLWithPath: file)) }
         if let name = env["BREWGUI_DEBUG_ADD"] {
-            // simulácia úpravy: pridanie položky, voliteľne po 2 s ⌘Z
+            // simulate an edit: add an entry, optionally ⌘Z after 2 s
             model.addToBrewfile(kind: .brew, name: name)
             if env["BREWGUI_DEBUG_UNDO"] != nil {
                 Task { @MainActor in
@@ -39,7 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case "missing": model.sidebarSelection = .missing
         case "casks": model.sidebarSelection = .brewfile(.cask)
         case "check":
-            // len na čítanie: brew bundle check
+            // read-only: brew bundle check
             model.sidebarSelection = .sync
             model.bundleCheck()
             model.consoleExpanded = true
@@ -71,7 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             alert.addButton(withTitle: String(localized: "Quit"))
             if alert.runModal() == .alertFirstButtonReturn { return .terminateCancel }
         }
-        // Zmeny sa ukladajú automaticky; dočasne neuložené (posledných pár stotín sekundy) uložíme bez pýtania.
+        // Changes are saved automatically; anything not saved yet (the last fraction of a second) is saved without asking.
         guard model.isDirty else { return .terminateNow }
         if model.externalChangeDetected {
             let alert = NSAlert()

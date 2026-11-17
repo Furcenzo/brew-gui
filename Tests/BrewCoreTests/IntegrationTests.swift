@@ -5,7 +5,7 @@ import Foundation
 import Testing
 @testable import BrewCore
 
-/// Volá skutočný `brew` – spúšťa sa len s `BREWGUI_INTEGRATION=1 swift test`.
+/// Calls the real `brew` – runs only with `BREWGUI_INTEGRATION=1 swift test`.
 @Suite(.enabled(if: ProcessInfo.processInfo.environment["BREWGUI_INTEGRATION"] == "1"))
 struct IntegrationTests {
     @Test func deprecatedCaskHasWarning() async throws {

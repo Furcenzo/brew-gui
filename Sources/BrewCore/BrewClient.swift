@@ -3,7 +3,7 @@
 
 import Foundation
 
-// MARK: - JSON modely z `brew info --json=v2`
+// MARK: - JSON models from `brew info --json=v2`
 
 public struct FormulaInfo: Decodable, Sendable, Hashable {
     public struct Versions: Decodable, Sendable, Hashable { public var stable: String? }
@@ -45,7 +45,7 @@ public struct FormulaInfo: Decodable, Sendable, Hashable {
     }
 }
 
-/// Text upozornenia pre balíky, ktoré Homebrew označil ako deprecated / disabled.
+/// Warning text for packages that Homebrew marked as deprecated / disabled.
 enum Deprecation {
     static func warning(deprecated: Bool?, reason: String?, disabled: Bool?, disableReason: String?, replacement: String?) -> String? {
         let isDisabled = disabled == true
@@ -106,7 +106,7 @@ struct InfoResponse: Decodable {
     var casks: [CaskInfo]
 }
 
-/// Detail balíka pre panel s informáciami.
+/// Package details for the info panel.
 public enum PackageInfo: Sendable, Hashable {
     case formula(FormulaInfo)
     case cask(CaskInfo)
@@ -193,14 +193,14 @@ struct OutdatedResponse: Decodable {
     var casks: [OutdatedPackage]
 }
 
-// MARK: - Stav inštalácie
+// MARK: - Installation state
 
-/// Prehľad nainštalovaných balíkov – indexovaný podľa všetkých mien a aliasov.
+/// Overview of installed packages – indexed by every name and alias.
 public struct InstalledState: Sendable {
     public var formulae: [FormulaInfo] = []
     public var casks: [CaskInfo] = []
     public var taps: Set<String> = []
-    /// `nil`, ak `mas` nie je nainštalovaný.
+    /// `nil` if `mas` is not installed.
     public var masApps: [String: MasApp]?
 
     private var formulaIndex: [String: FormulaInfo] = [:]
@@ -233,8 +233,8 @@ public struct InstalledState: Sendable {
         Self.lookup(name, in: caskIndex)
     }
 
-    /// `user/tap/foo` musí sedieť presne – inak by sa `frankea/whisky/whisky` zamenil s oficiálnym `whisky`.
-    /// Krátky názov skúšame len pri oficiálnych tapoch (`homebrew/cask/foo`).
+    /// `user/tap/foo` must match exactly – otherwise `frankea/whisky/whisky` would be confused with the official `whisky`.
+    /// The short name is only tried for official taps (`homebrew/cask/foo`).
     static func lookup<T>(_ name: String, in index: [String: T]) -> T? {
         let key = name.lowercased()
         if let exact = index[key] { return exact }
@@ -253,7 +253,7 @@ public struct InstalledState: Sendable {
 
     public func hasTap(_ name: String) -> Bool {
         let key = name.lowercased()
-        // Oficiálne tapy (homebrew/core, homebrew/cask…) sa dnes riešia cez API a `brew tap` ich nevypisuje.
+        // Official taps (homebrew/core, homebrew/cask…) are served via the API nowadays and `brew tap` doesn't list them.
         return taps.contains(key) || key.hasPrefix("homebrew/")
     }
 
@@ -285,13 +285,13 @@ public struct InstalledState: Sendable {
     }
 }
 
-/// Aplikácia z Mac App Store podľa `mas list`.
+/// A Mac App Store app as reported by `mas list`.
 public struct MasApp: Sendable, Hashable {
     public var id: String
     public var name: String
     public var version: String
 
-    /// Riadky v tvare `682658836  GarageBand  (10.4.14)`.
+    /// Lines in the form `682658836  GarageBand  (10.4.14)`.
     public static func parseList(_ output: String) -> [String: MasApp] {
         var result: [String: MasApp] = [:]
         for line in output.split(whereSeparator: \.isNewline) {
@@ -342,7 +342,7 @@ public enum EntryStatus: Sendable, Hashable {
     }
 }
 
-/// Výsledok `brew bundle cleanup` bez `--force`.
+/// Result of `brew bundle cleanup` without `--force`.
 public struct CleanupPreview: Sendable, Hashable {
     public var casks: [String] = []
     public var formulae: [String] = []
@@ -376,9 +376,9 @@ public struct CleanupPreview: Sendable, Hashable {
     }
 }
 
-// MARK: - Klient
+// MARK: - Client
 
-/// Tenký obal nad `brew` CLI.
+/// A thin wrapper around the `brew` CLI.
 public struct BrewClient: Sendable {
     public let brewURL: URL
 
@@ -395,7 +395,7 @@ public struct BrewClient: Sendable {
 
     public var prefixBin: String { brewURL.deletingLastPathComponent().path }
 
-    /// Prostredie pre brew. GUI aplikácie nededia PATH zo shellu, preto ho skladáme ručne.
+    /// Environment for brew. GUI apps don't inherit PATH from the shell, so it's assembled manually.
     public func environment(quiet: Bool, askpass: URL? = nil) -> [String: String] {
         var env = ProcessInfo.processInfo.environment
         let path = [prefixBin, "/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"]
@@ -444,7 +444,7 @@ public struct BrewClient: Sendable {
         return InstalledState(formulae: info.formulae, casks: info.casks, taps: taps, masApps: await mas)
     }
 
-    /// ID → aplikácia z App Store (cez `mas list`).
+    /// ID → App Store app (via `mas list`).
     func masApps() async -> [String: MasApp]? {
         let mas = brewURL.deletingLastPathComponent().appendingPathComponent("mas")
         guard FileManager.default.isExecutableFile(atPath: mas.path) else { return nil }
@@ -455,7 +455,7 @@ public struct BrewClient: Sendable {
     public func outdated(greedy: Bool) async throws -> [OutdatedPackage] {
         var args = ["outdated", "--json=v2"]
         if greedy { args.append("--greedy") }
-        // `brew outdated` vracia nenulový kód, keď niečo zastarané existuje.
+        // `brew outdated` returns a non-zero exit code when something is outdated.
         let text = try await capture(args, allowFailure: true)
         let response = try Self.decoder.decode(OutdatedResponse.self, from: Data(text.utf8))
         return response.formulae + response.casks.map { var c = $0; c.isCask = true; return c }

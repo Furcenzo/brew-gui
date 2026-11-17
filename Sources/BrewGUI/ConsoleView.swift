@@ -3,7 +3,7 @@
 
 import SwiftUI
 
-/// Panel na spodku okna – stav poslednej operácie a rozbaliteľný výstup.
+/// Panel at the bottom of the window – status of the last operation and expandable output.
 struct ConsoleView: View {
     @Environment(AppModel.self) private var model
     @State private var selectedJobID: UUID?

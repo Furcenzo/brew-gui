@@ -67,7 +67,7 @@ struct BrewfileView: View {
         .onChange(of: kindFilter) { selection.removeAll() }
     }
 
-    // MARK: Tabuľka
+    // MARK: Table
 
     private var rows: [EntryRow] {
         let duplicates = model.brewfile.duplicateIDs
@@ -213,7 +213,7 @@ struct BrewfileView: View {
         .background(Color(nsColor: .textBackgroundColor))
     }
 
-    // MARK: Inspektor
+    // MARK: Inspector
 
     @ViewBuilder private var inspector: some View {
         if selection.count == 1, let id = selection.first, let entry = model.brewfile.entry(id: id) {
@@ -225,7 +225,7 @@ struct BrewfileView: View {
         }
     }
 
-    // MARK: Panel nástrojov
+    // MARK: Toolbar
 
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
         ToolbarItem(placement: .navigation) {
@@ -281,7 +281,7 @@ struct BrewfileView: View {
     }
 }
 
-// MARK: - Detail položky
+// MARK: - Entry details
 
 struct EntryInspector: View {
     @Environment(AppModel.self) private var model
@@ -332,7 +332,7 @@ struct EntryInspector: View {
     }
 }
 
-/// Prehľad v inšpektore, keď nie je nič vybrané.
+/// Overview shown in the inspector when nothing is selected.
 struct BrewfileSummary: View {
     @Environment(AppModel.self) private var model
 

@@ -4,7 +4,7 @@
 import BrewCore
 import SwiftUI
 
-/// Detail balíka z `brew info --json=v2` s akciami.
+/// Package details from `brew info --json=v2` with actions.
 struct PackageInfoView: View {
     @Environment(AppModel.self) private var model
     let kind: EntryKind

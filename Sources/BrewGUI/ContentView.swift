@@ -106,7 +106,7 @@ struct SidebarView: View {
     }
 }
 
-// MARK: - Spoločné prvky
+// MARK: - Shared components
 
 struct StatusBadge: View {
     let status: EntryStatus

@@ -50,7 +50,7 @@ import Testing
         git.comment = "verzovanie"
         file.update(git)
         #expect(file.text.contains("brew \"git\" # verzovanie\n"))
-        // ostatné riadky ostanú bez zmeny
+        // the other lines stay unchanged
         #expect(file.text.contains("cask 'ghostty'\n"))
     }
 

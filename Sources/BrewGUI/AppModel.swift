@@ -7,7 +7,7 @@ import Observation
 import OSLog
 import SwiftUI
 
-/// Jedna spustená brew operácia s priebežným výstupom.
+/// A single running brew operation with live output.
 @MainActor @Observable
 final class Job: Identifiable {
     enum State: Equatable { case running, succeeded, failed(Int32), cancelled }
@@ -46,7 +46,7 @@ final class AppModel {
 
     // Brewfile
     private(set) var fileURL: URL
-    /// Každá zmena sa zaregistruje do Undo (⌘Z) a po chvíľke sa automaticky uloží.
+    /// Every change is registered with Undo (⌘Z) and saved automatically after a short delay.
     var brewfile = Brewfile() {
         didSet { brewfileDidChange(from: oldValue) }
     }
@@ -55,14 +55,14 @@ final class AppModel {
     @ObservationIgnored private var trackChanges = true
     @ObservationIgnored private var registerUndo = true
     @ObservationIgnored private var autosaveTask: Task<Void, Never>?
-    /// Súbor, ktorý sme v tejto session už zálohovali (záloha = stav pred prvým uložením).
+    /// The file already backed up in this session (the backup is the state before the first save).
     @ObservationIgnored private var backedUpFile: URL?
     @ObservationIgnored private var lastStateRefresh = Date.distantPast
     @ObservationIgnored private let log = Logger(subsystem: "io.github.furcenzo.brewgui", category: "state")
     var isDirty: Bool { brewfile.text != savedText }
     var externalChangeDetected = false
 
-    // Stav systému
+    // System state
     private(set) var installed = InstalledState()
     private(set) var installedLoaded = false
     private(set) var loadingInstalled = false
@@ -73,7 +73,7 @@ final class AppModel {
     private(set) var allFormulae: [String] = []
     private(set) var allCasks: [String] = []
 
-    // Úlohy
+    // Jobs
     private(set) var jobs: [Job] = []
     var currentJob: Job? { jobs.last }
     var isBusy: Bool { jobs.contains { $0.isRunning } }
@@ -95,8 +95,8 @@ final class AppModel {
         loadFile(fileURL)
     }
 
-    /// Staršie verzie mali bundle id `local.brewgui`. Ak nová doména nastavení ešte neexistuje,
-    /// jednorazovo do nej skopírujeme starú (posledný Brewfile, režim zobrazenia, veľkosť okna…).
+    /// Older versions used the bundle ID `local.brewgui`. If the new defaults domain doesn't exist yet,
+    /// copy the old one into it once (last Brewfile, view mode, window size…).
     private static func migrateLegacyDefaults() {
         let legacyID = "local.brewgui"
         guard let currentID = Bundle.main.bundleIdentifier, currentID != legacyID else { return }
@@ -107,7 +107,7 @@ final class AppModel {
         defaults.setPersistentDomain(legacy, forName: currentID)
     }
 
-    // MARK: - Súbor
+    // MARK: - File
 
     func loadFile(_ url: URL) {
         do {
@@ -137,7 +137,7 @@ final class AppModel {
             }
             undoManager.setActionName(String(localized: "Brewfile Edit"))
         }
-        // Zmeny zvonku, ktoré ešte nie sú uložené, by sme autosave-om prepísali – vtedy čakáme na rozhodnutie.
+        // Autosave would overwrite unsaved external changes – wait for the user's decision instead.
         guard !externalChangeDetected else { return }
         autosaveTask?.cancel()
         autosaveTask = Task { [weak self] in
@@ -147,7 +147,7 @@ final class AppModel {
         }
     }
 
-    /// Zmena z textového editora – undo rieši samotný editor.
+    /// A change from the text editor – the editor handles undo itself.
     func setTextFromEditor(_ text: String) {
         registerUndo = false
         brewfile = Brewfile(parsing: text)
@@ -169,7 +169,7 @@ final class AppModel {
         }
     }
 
-    /// Pred prvým uložením v session odloží pôvodný súbor do ~/Library/Application Support/BrewGUI/Backups.
+    /// Before the first save in a session, copies the original file to ~/Library/Application Support/BrewGUI/Backups.
     private func backupCurrentFile() throws {
         guard FileManager.default.fileExists(atPath: fileURL.path) else { return }
         let dir = URL.applicationSupportDirectory.appendingPathComponent("BrewGUI/Backups", isDirectory: true)
@@ -186,7 +186,7 @@ final class AppModel {
 
     var backupsDirectory: URL { URL.applicationSupportDirectory.appendingPathComponent("BrewGUI/Backups", isDirectory: true) }
 
-    /// Volané pri aktivácii aplikácie – zistí, či niekto súbor zmenil zvonku.
+    /// Called when the app is activated – detects whether the file was changed externally.
     func checkExternalChanges() {
         guard let text = try? String(contentsOf: fileURL, encoding: .utf8), text != savedText else { return }
         if isDirty {
@@ -206,7 +206,7 @@ final class AppModel {
         if panel.runModal() == .OK, let url = panel.url { loadFile(url) }
     }
 
-    // MARK: - Úpravy
+    // MARK: - Editing
 
     func add(_ entry: BrewfileEntry) {
         brewfile.add(entry)
@@ -225,7 +225,7 @@ final class AppModel {
         brewfile.add(BrewfileEntry(kind: kind, name: name))
     }
 
-    // MARK: - Stav
+    // MARK: - State
 
     func refreshAll() async {
         async let a: Void = refreshInstalled()
@@ -234,8 +234,8 @@ final class AppModel {
         _ = await (a, b, c)
     }
 
-    /// Volané pri prepnutí do aplikácie – zachytí zmeny urobené mimo nej (napr. `brew install` v Termináli).
-    /// Počas bežiacej operácie sa neobnovuje (urobí sa po jej skončení) a najviac raz za 10 s.
+    /// Called when switching to the app – picks up changes made outside it (e.g. `brew install` in Terminal).
+    /// Skipped while an operation is running (it refreshes when it finishes) and runs at most once every 10 s.
     func refreshOnActivation() {
         guard client != nil, !isBusy, Date().timeIntervalSince(lastStateRefresh) > 10 else { return }
         log.notice("Refreshing status after app activation")
@@ -287,7 +287,7 @@ final class AppModel {
         return brewfile.entries.filter { status(of: $0) == .missing }
     }
 
-    /// Nainštalované balíky (na požiadanie), tapy a appky, ktoré v Brewfile nie sú.
+    /// Packages installed on request, taps and apps that are not in the Brewfile.
     var unmanaged: [UnmanagedItem] {
         guard installedLoaded else { return [] }
         let entries = brewfile.entries
@@ -319,9 +319,9 @@ final class AppModel {
         return items
     }
 
-    // MARK: - Spúšťanie brew príkazov
+    // MARK: - Running brew commands
 
-    /// Skript pre `sudo -A` – heslo zadá používateľ do systémového dialógu.
+    /// Script for `sudo -A` – the user enters the password in a system dialog.
     @ObservationIgnored private lazy var askpassURL: URL? = {
         let dir = URL.applicationSupportDirectory.appendingPathComponent("BrewGUI", isDirectory: true)
         let url = dir.appendingPathComponent("askpass.sh")
@@ -341,7 +341,7 @@ final class AppModel {
         }
     }()
 
-    /// Spustí `brew <args>` so živým výstupom v konzole; po dokončení obnoví stav.
+    /// Runs `brew <args>` with live output in the console; refreshes the state when finished.
     @discardableResult
     func run(_ title: String, _ args: [String], refresh: Bool = true, onFinish: (@MainActor (Bool) -> Void)? = nil) -> Job? {
         guard let client else {
@@ -390,7 +390,7 @@ final class AppModel {
         arg.allSatisfy({ $0.isLetter || $0.isNumber || "-_./=@:+".contains($0) }) ? arg : "'\(arg.replacingOccurrences(of: "'", with: "'\\''"))'"
     }
 
-    // MARK: - Konkrétne operácie
+    // MARK: - Operations
 
     func install(_ entry: BrewfileEntry) {
         switch entry.kind {
@@ -452,7 +452,7 @@ final class AppModel {
         run(String(localized: "Exporting State to \(url.lastPathComponent)"), args, refresh: false)
     }
 
-    /// `mas` beží cez rovnaký mechanizmus – spúšťame ho cez `brew` prostredie ako externý príkaz.
+    /// `mas` uses the same mechanism – it runs as an external command with the `brew` environment.
     private func runMas(_ title: String, _ args: [String]) {
         guard let client else { return }
         let mas = client.brewURL.deletingLastPathComponent().appendingPathComponent("mas")

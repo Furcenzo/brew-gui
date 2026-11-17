@@ -4,7 +4,7 @@
 import BrewCore
 import SwiftUI
 
-// MARK: - Aktualizácie
+// MARK: - Updates
 
 struct OutdatedView: View {
     @Environment(AppModel.self) private var model
@@ -91,7 +91,7 @@ struct OutdatedView: View {
     }
 }
 
-// MARK: - Mimo Brewfile
+// MARK: - Not in Brewfile
 
 struct UnmanagedView: View {
     @Environment(AppModel.self) private var model
@@ -170,7 +170,7 @@ struct UnmanagedView: View {
     }
 }
 
-// MARK: - Hľadanie
+// MARK: - Search
 
 struct SearchView: View {
     @Environment(AppModel.self) private var model
@@ -250,7 +250,7 @@ struct SearchView: View {
         if scope != .casks { out += match(model.allFormulae, .brew) }
         if scope != .formulae { out += match(model.allCasks, .cask) }
         if scope == .all {
-            // Presné zhody a prefixy navrch bez ohľadu na typ.
+            // Exact matches and prefixes first, regardless of type.
             out.sort { rank($0.name, q) < rank($1.name, q) }
         }
         return Array(out.prefix(300))

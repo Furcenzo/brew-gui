@@ -33,7 +33,7 @@ private final class DataBox: @unchecked Sendable {
     var data = Data()
 }
 
-/// Rozdeľuje prichádzajúce bajty na riadky (aj cez hranice UTF‑8 znakov).
+/// Splits incoming bytes into lines (also across UTF‑8 character boundaries).
 struct LineSplitter {
     private var buffer = Data()
 
@@ -63,8 +63,8 @@ public enum ProcessRunner {
         ansi.stringByReplacingMatches(in: text, range: NSRange(text.startIndex..., in: text), withTemplate: "")
     }
 
-    /// Spustí proces a priebežne posiela výstup (stdout + stderr) po riadkoch.
-    /// Zrušenie odberu streamu pošle procesu SIGINT.
+    /// Runs a process and streams its output (stdout + stderr) line by line.
+    /// Cancelling the stream sends SIGINT to the process.
     public static func stream(
         executable: URL,
         arguments: [String],
@@ -112,7 +112,7 @@ public enum ProcessRunner {
         }
     }
 
-    /// Spustí proces a vráti celý stdout. Pri nenulovom kóde vyhodí `CommandError`.
+    /// Runs a process and returns its whole stdout. Throws `CommandError` on a non-zero exit code.
     public static func capture(
         executable: URL,
         arguments: [String],

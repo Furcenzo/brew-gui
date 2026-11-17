@@ -174,7 +174,7 @@ struct EntryEditor: View {
     }
 }
 
-/// Malé tlačidlá s návrhmi názvov.
+/// Small buttons with name suggestions.
 struct FlowSuggestions: View {
     let items: [String]
     let onPick: (String) -> Void
