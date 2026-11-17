@@ -5,6 +5,8 @@ version into the GitHub Release notes, so add a section before publishing.
 
 ## Unreleased
 
+## 0.4.0
+
 - **Automatic `brew update`.** Brew GUI fetches the latest package information when it starts and when you come back to it after it has been in the background for a while (15 minutes by default), so new versions show up under *Updates*. Change the interval or turn it off in *Settings* (⌘,).
 
 ## 0.3.1
