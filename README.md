@@ -62,7 +62,7 @@ If the app opens normally, there's nothing else to do.
 - **Console** – live output of every operation, with the option to stop it, and a history.
 - **Menu bar** – the number of available updates, a quick `brew update` / upgrade, package search and the apps
   installed with Homebrew to launch; Brew GUI keeps running there when its window is closed (can be turned off in
-  Settings).
+  Settings). Turn on *Open at login* in Settings to have it there after every login.
 
 Brewfile changes are saved automatically; undo the last edit with ⌘Z (Edit → Undo).
 Before the first save in each session, the original file is backed up to `~/Library/Application Support/BrewGUI/Backups`.

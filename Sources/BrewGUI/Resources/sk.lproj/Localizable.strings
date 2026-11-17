@@ -23,6 +23,7 @@
 "All" = "Všetko";
 "All apps are managed" = "Všetky aplikácie sú spravované";
 "All Entries" = "Všetky položky";
+"Allow Brew GUI in System Settings → General → Login Items." = "Povoľte Brew GUI v Nastaveniach systému → Všeobecné → Položky pri prihlásení.";
 "Also upgrade outdated packages when installing" = "Pri inštalácii aj upgradovať zastarané balíky";
 "Another program changed the Brewfile" = "Brewfile medzitým zmenil iný program";
 "Another program changed the Brewfile – it will be overwritten with your changes before syncing." = "Brewfile zmenil iný program – pred synchronizáciou sa prepíše vašimi úpravami.";
@@ -61,6 +62,7 @@
 "Comment" = "Komentár";
 "Copy All Output" = "Kopírovať celý výstup";
 "Copy Line" = "Kopírovať riadok";
+"Couldn't change the login item: %@" = "Položku pri prihlásení sa nepodarilo zmeniť: %@";
 "Couldn't load the Brewfile: %@" = "Brewfile sa nepodarilo načítať: %@";
 "Couldn't save the Brewfile: %@" = "Brewfile sa nepodarilo uložiť: %@";
 "Dependencies" = "Závislosti";
@@ -153,10 +155,12 @@
 "OK" = "OK";
 "Open Another Brewfile…" = "Otvoriť iný Brewfile…";
 "Open Another File…" = "Otvoriť iný súbor…";
+"Open at login" = "Otvoriť pri prihlásení";
 "Open Backups" = "Otvoriť zálohy";
 "Open Brew GUI" = "Otvoriť Brew GUI";
 "Open Brewfile" = "Otvoriť Brewfile";
 "Open Brewfile…" = "Otvoriť Brewfile…";
+"Open Login Items" = "Otvoriť Položky pri prihlásení";
 "Operation History" = "História operácií";
 "optional" = "voliteľné";
 "optional Ruby arguments" = "voliteľné Ruby argumenty";
