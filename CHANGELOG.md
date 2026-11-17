@@ -5,6 +5,8 @@ version into the GitHub Release notes, so add a section before publishing.
 
 ## Unreleased
 
+## 0.4.2
+
 - Package details in the Brewfile inspector no longer start far below the entry header.
 
 ## 0.4.1
