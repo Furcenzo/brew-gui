@@ -43,7 +43,11 @@ struct ContentView: View {
         } message: {
             Text("Another program modified the file, but you still have unsaved changes here. Loading from the file will discard them.")
         }
-        .onAppear { model.undoManager = undoManager }
+        .onAppear {
+            model.undoManager = undoManager
+            // The window may come back while the app lives only in the menu bar.
+            NSApp.setActivationPolicy(.regular)
+        }
         .onChange(of: undoManager.map(ObjectIdentifier.init)) { model.undoManager = undoManager }
     }
 

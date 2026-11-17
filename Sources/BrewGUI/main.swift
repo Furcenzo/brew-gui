@@ -29,6 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// saves an image of the window once loaded (no screen recording permission needed) and quits the app.
     /// Used by scripts/screenshots.sh together with BREWGUI_APPEARANCE=light|dark, BREWGUI_WINDOW_SIZE=1200x750,
     /// BREWGUI_SELECT=<entry name> (Brewfile inspector) and BREWGUI_SEARCH=<package> (Search page).
+    /// BREWGUI_PAGE=menubar captures the menu bar panel instead (BREWGUI_MENUBAR_QUERY types into its search field).
     private func scheduleDebugSnapshot() {
         let env = ProcessInfo.processInfo.environment
         guard let path = env["BREWGUI_SNAPSHOT"] else { return }
@@ -40,7 +41,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.debugSelectEntry = env["BREWGUI_SELECT"]
         model.debugDisplayPath = env["BREWGUI_DISPLAY_PATH"]
         if let query = env["BREWGUI_SEARCH"] {
-            model.debugSearchQuery = query
+            model.pendingSearchQuery = query
             model.sidebarSelection = .search
         }
         if let file = env["BREWGUI_FILE"] { model.loadFile(URL(fileURLWithPath: file)) }
@@ -71,6 +72,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             model.consoleExpanded = true
         default: break
         }
+        var captureWindow: NSWindow?
+        if env["BREWGUI_PAGE"] == "menubar" {
+            let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 340, height: 520),
+                                styleMask: [.borderless], backing: .buffered, defer: false)
+            panel.contentView = NSHostingView(rootView: MenuBarContent(query: env["BREWGUI_MENUBAR_QUERY"] ?? "")
+                .environment(model)
+                .background(.regularMaterial))
+            panel.setContentSize(panel.contentView?.fittingSize ?? panel.frame.size)
+            panel.center()
+            panel.orderFrontRegardless()
+            captureWindow = panel
+        }
         Task { @MainActor in
             if let size = env["BREWGUI_WINDOW_SIZE"]?.split(separator: "x").compactMap({ Double($0) }), size.count == 2 {
                 try? await Task.sleep(for: .milliseconds(300))
@@ -84,7 +97,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NSApp.activate(ignoringOtherApps: true)
             NSApp.windows.first(where: { $0.isVisible })?.makeKeyAndOrderFront(nil)
             try? await Task.sleep(for: .milliseconds(500))
-            guard let view = NSApp.windows.first(where: { $0.isVisible })?.contentView?.superview,
+            guard let view = captureWindow?.contentView ?? NSApp.windows.first(where: { $0.isVisible })?.contentView?.superview,
                   let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { exit(2) }
             view.cacheDisplay(in: view.bounds, to: rep)
             try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
@@ -98,7 +111,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.autoUpdateOnActivation()
     }
 
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+    /// With the menu bar icon, closing the window keeps Brew GUI running there (without a Dock icon).
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        guard AppModel.showsMenuBarIcon else { return true }
+        NSApp.setActivationPolicy(.accessory)
+        return false
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        NSApp.setActivationPolicy(.regular)
+        return true
+    }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         if model.isBusy {
@@ -131,6 +154,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 struct BrewGUIApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
+    @AppStorage(AppModel.showMenuBarIconKey) private var showMenuBarIcon = true
 
     var body: some Scene {
         Window("Brew GUI", id: "main") {
@@ -146,6 +170,14 @@ struct BrewGUIApp: App {
         Settings {
             SettingsView()
         }
+
+        MenuBarExtra(isInserted: $showMenuBarIcon) {
+            MenuBarContent()
+                .environment(delegate.model)
+        } label: {
+            MenuBarLabel(model: delegate.model)
+        }
+        .menuBarExtraStyle(.window)
     }
 }
 

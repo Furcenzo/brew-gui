@@ -72,6 +72,8 @@ final class AppModel {
     var greedyOutdated = false
     private(set) var allFormulae: [String] = []
     private(set) var allCasks: [String] = []
+    /// Apps installed by Homebrew casks (menu bar list).
+    private(set) var caskApps: [CaskApp] = []
 
     // Apps not managed by Homebrew or the App Store
     private(set) var unmanagedApps: [UnmanagedApp] = []
@@ -89,9 +91,16 @@ final class AppModel {
     var sidebarSelection: SidebarItem? = .brewfile(nil)
     var errorMessage: String?
 
-    // Debugging (scripts/screenshots.sh): picked up once by BrewfileView / SearchView
+    static let showMenuBarIconKey = "showMenuBarIcon"
+    static var showsMenuBarIcon: Bool {
+        UserDefaults.standard.object(forKey: showMenuBarIconKey) == nil || UserDefaults.standard.bool(forKey: showMenuBarIconKey)
+    }
+
+    /// A package to show on the Search page (from the menu bar or BREWGUI_SEARCH); picked up once by SearchView.
+    var pendingSearchQuery: String?
+
+    // Debugging (scripts/screenshots.sh): picked up once by BrewfileView
     var debugSelectEntry: String?
-    var debugSearchQuery: String?
     /// Shown instead of the real path of the Brewfile (BREWGUI_DISPLAY_PATH, e.g. `~/Brewfile` for screenshots).
     var debugDisplayPath: String?
 
@@ -275,6 +284,8 @@ final class AppModel {
         do {
             installed = try await client.installedState()
             installedLoaded = true
+            let casks = installed.casks
+            caskApps = await Task.detached { CaskApp.find(in: casks) }.value
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -336,6 +347,18 @@ final class AppModel {
         if let names = try? await client.allNames() {
             allFormulae = names.formulae
             allCasks = names.casks
+        }
+    }
+
+    func search(_ query: String, scope: PackageSearch.Scope = .all, limit: Int = 300) -> [PackageSearchResult] {
+        PackageSearch.results(for: query, formulae: allFormulae, casks: allCasks, scope: scope, limit: limit)
+    }
+
+    func isInstalled(_ result: PackageSearchResult) -> Bool {
+        switch result.kind {
+        case .brew: installed.formula(named: result.name)?.installedVersion != nil
+        case .cask: installed.cask(named: result.name)?.installed != nil
+        default: false
         }
     }
 

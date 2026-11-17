@@ -141,10 +141,12 @@
 "Name" = "Názov";
 "New Version" = "Nová";
 "no" = "nie";
+"No apps installed with Homebrew yet." = "Cez Homebrew zatiaľ nie sú nainštalované žiadne aplikácie.";
 "no cask found" = "cask sa nenašiel";
 "No cask with this name exists in Homebrew." = "Cask s týmto názvom v Homebrew neexistuje.";
 "No formula with this name exists in Homebrew (or it is an alias)." = "Formula s týmto názvom v Homebrew neexistuje (alebo ide o alias).";
 "No information" = "Bez informácií";
+"No packages found" = "Žiadne balíky sa nenašli";
 "Not in Brewfile" = "Mimo Brewfile";
 "Not installed" = "Nenainštalované";
 "Nothing to clean up" = "Nie je čo upratovať";
@@ -152,6 +154,7 @@
 "Open Another Brewfile…" = "Otvoriť iný Brewfile…";
 "Open Another File…" = "Otvoriť iný súbor…";
 "Open Backups" = "Otvoriť zálohy";
+"Open Brew GUI" = "Otvoriť Brew GUI";
 "Open Brewfile" = "Otvoriť Brewfile";
 "Open Brewfile…" = "Otvoriť Brewfile…";
 "Operation History" = "História operácií";
@@ -171,7 +174,9 @@
 "Path" = "Cesta";
 "Pinned" = "Pinned";
 "Preview…" = "Náhľad…";
+"Quick update, package search and your Homebrew apps from the menu bar. With the icon, Brew GUI keeps running there when you close its window." = "Rýchla aktualizácia, hľadanie balíkov a vaše aplikácie z Homebrew priamo z menu baru. S ikonou zostane Brew GUI bežať v menu bare aj po zatvorení okna.";
 "Quit" = "Ukončiť";
+"Quit Brew GUI" = "Ukončiť Brew GUI";
 "Quitting the app will interrupt the running operation." = "Ukončením aplikácie sa prebiehajúca operácia preruší.";
 "Refresh" = "Obnoviť";
 "Refresh Status" = "Obnoviť stav";
@@ -193,11 +198,16 @@
 "Scan Applications again" = "Znovu prehľadať Aplikácie";
 "Search Homebrew" = "Hľadať v Homebrew";
 "Search Packages" = "Hľadať balíky";
+"Search packages and apps" = "Hľadať balíky a aplikácie";
 "Select a package" = "Vyberte balík";
 "Selected entries: %lld" = "Vybrané položky: %lld";
+"Settings…" = "Nastavenia…";
 "Show" = "Zobraziť";
 "Show / hide details" = "Zobraziť / skryť detail";
+"Show All Updates" = "Zobraziť všetky aktualizácie";
 "Show Console" = "Zobraziť konzolu";
+"Show icon in the menu bar" = "Zobraziť ikonu v menu bare";
+"Show in Brew GUI" = "Zobraziť v Brew GUI";
 "Show in Finder" = "Zobraziť vo Finderi";
 "Show output (⌘J)" = "Zobraziť výstup (⌘J)";
 "Sort" = "Zoradiť";
@@ -243,6 +253,7 @@
 "Unsupported" = "Nepodporované";
 "unsupported" = "nepodporované";
 "Updates" = "Aktualizácie";
+"Updates available: %lld" = "Dostupné aktualizácie: %lld";
 "Upgrade" = "Upgradovať";
 "Upgrade All" = "Upgradovať všetko";
 "Upgrade Selected" = "Upgradovať vybrané";

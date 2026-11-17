@@ -345,13 +345,17 @@ struct SearchView: View {
             case .casks: "Casks"
             }
         }
+
+        var searchScope: PackageSearch.Scope {
+            switch self {
+            case .all: .all
+            case .formulae: .formulae
+            case .casks: .casks
+            }
+        }
     }
 
-    struct SearchResult: Hashable, Identifiable {
-        var kind: EntryKind
-        var name: String
-        var id: String { "\(kind.rawValue):\(name)" }
-    }
+    typealias SearchResult = PackageSearchResult
 
     var body: some View {
         HSplitView {
@@ -360,7 +364,7 @@ struct SearchView: View {
                     Image(systemName: result.kind.symbol).foregroundStyle(.secondary).frame(width: 18)
                     Text(result.name)
                     Spacer()
-                    if isInstalled(result) {
+                    if model.isInstalled(result) {
                         Image(systemName: "checkmark.circle.fill").foregroundStyle(.green).help("Installed")
                     }
                     if model.brewfile.contains(kind: result.kind, name: result.name) {
@@ -395,42 +399,16 @@ struct SearchView: View {
         }
         // Focus the search field when the page opens, so you can start typing right away.
         .task { searchFocused = true }
-        .task(id: model.allCasks.count) {
-            guard let name = model.debugSearchQuery, !model.allCasks.isEmpty else { return }
+        // A package requested from the menu bar (or BREWGUI_SEARCH) – also when the page is already open.
+        .task(id: "\(model.allCasks.count)|\(model.pendingSearchQuery ?? "")") {
+            guard let name = model.pendingSearchQuery, !model.allCasks.isEmpty else { return }
             query = name
             selection = SearchResult(kind: model.allCasks.contains(name) ? .cask : .brew, name: name)
-            model.debugSearchQuery = nil
+            model.pendingSearchQuery = nil
         }
     }
 
     private var results: [SearchResult] {
-        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !q.isEmpty else { return [] }
-        func match(_ names: [String], _ kind: EntryKind) -> [SearchResult] {
-            let exact = names.filter { $0 == q }
-            let prefix = names.filter { $0 != q && $0.hasPrefix(q) }
-            let contains = names.filter { !$0.hasPrefix(q) && $0.contains(q) }
-            return (exact + prefix + contains).map { SearchResult(kind: kind, name: $0) }
-        }
-        var out: [SearchResult] = []
-        if scope != .casks { out += match(model.allFormulae, .brew) }
-        if scope != .formulae { out += match(model.allCasks, .cask) }
-        if scope == .all {
-            // Exact matches and prefixes first, regardless of type.
-            out.sort { rank($0.name, q) < rank($1.name, q) }
-        }
-        return Array(out.prefix(300))
-    }
-
-    private func rank(_ name: String, _ q: String) -> Int {
-        name == q ? 0 : name.hasPrefix(q) ? 1 : 2
-    }
-
-    private func isInstalled(_ result: SearchResult) -> Bool {
-        switch result.kind {
-        case .brew: model.installed.formula(named: result.name)?.installedVersion != nil
-        case .cask: model.installed.cask(named: result.name)?.installed != nil
-        default: false
-        }
+        model.search(query, scope: scope.searchScope)
     }
 }
