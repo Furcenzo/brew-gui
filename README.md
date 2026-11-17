@@ -139,7 +139,8 @@ project hook).
 
 builds a universal app and `build/Brew-GUI-0.2.0.zip`; adding `--publish` also tags `v0.2.0`, creates the
 GitHub Release (using the `## 0.2.0` section of [CHANGELOG.md](CHANGELOG.md) as its release notes) and updates the
-cask in [Furcenzo/homebrew-tap](https://github.com/Furcenzo/homebrew-tap).
+cask in [Furcenzo/homebrew-tap](https://github.com/Furcenzo/homebrew-tap). On the author's Mac it then also refreshes
+the app's page on [dev.furian.sk](https://dev.furian.sk) (skipped when that site's repository isn't checked out).
 
 ## Project structure
 
