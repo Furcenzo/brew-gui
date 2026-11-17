@@ -9,16 +9,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = AppModel()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // When started via `swift run` the process has no bundle – turn it into a regular app with a Dock icon.
-        NSApp.setActivationPolicy(.regular)
         if Bundle.main.bundleIdentifier == nil {
             // `swift run` has no bundle to take the icon from – use the one from the source tree.
             let icon = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("Resources/AppIcon.icns")
             NSApp.applicationIconImage = NSImage(contentsOf: icon)
         }
-        NSApp.activate()
+        if Self.wasLaunchedAtLogin && AppModel.showsMenuBarIcon {
+            // Started by "Open at login": live only in the menu bar until the user opens the window.
+            model.hideWindowAtLaunch = true
+            NSApp.setActivationPolicy(.accessory)
+            for window in NSApp.windows where window.isVisible && window.canBecomeMain { window.close() }
+        } else {
+            // Also turns a process started via `swift run` (no bundle) into a regular app with a Dock icon.
+            NSApp.setActivationPolicy(.regular)
+            NSApp.activate()
+        }
         scheduleDebugSnapshot()
         model.autoUpdateOnLaunch()
+    }
+
+    /// macOS marks the launch of a login item in the "open application" Apple event.
+    /// BREWGUI_LAUNCHED_AT_LOGIN=1 simulates it for testing.
+    private static var wasLaunchedAtLogin: Bool {
+        if ProcessInfo.processInfo.environment["BREWGUI_LAUNCHED_AT_LOGIN"] == "1" { return true }
+        guard let event = NSAppleEventManager.shared().currentAppleEvent, event.eventID == kAEOpenApplication else { return false }
+        return event.paramDescriptor(forKeyword: keyAEPropData)?.enumCodeValue == keyAELaunchedAsLogInItem
     }
 
     func applicationDidResignActive(_ notification: Notification) {

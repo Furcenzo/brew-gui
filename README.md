@@ -62,7 +62,8 @@ If the app opens normally, there's nothing else to do.
 - **Console** – live output of every operation, with the option to stop it, and a history.
 - **Menu bar** – the number of available updates, a quick `brew update` / upgrade, package search and the apps
   installed with Homebrew to launch; Brew GUI keeps running there when its window is closed (can be turned off in
-  Settings). Turn on *Open at login* in Settings to have it there after every login.
+  Settings). Turn on *Open at login* in Settings to have it there after every login – it then starts in the
+  menu bar only, without the window.
 
 Brewfile changes are saved automatically; undo the last edit with ⌘Z (Edit → Undo).
 Before the first save in each session, the original file is backed up to `~/Library/Application Support/BrewGUI/Backups`.
@@ -155,6 +156,7 @@ saves an image of the window once loaded and quits the app (useful without scree
 `BREWGUI_FILE=/path/to/Brewfile` opens a different file, `BREWGUI_DEBUG_ADD=name [BREWGUI_DEBUG_UNDO=1]`
 simulates adding an entry (and ⌘Z) – only test this on a copy of your Brewfile.
 `BREWGUI_APPS_DIRS=/dir1:/dir2` scans other folders instead of /Applications and ~/Applications.
+`BREWGUI_LAUNCHED_AT_LOGIN=1` behaves like a launch at login (no window, menu bar only).
 `BREWGUI_PAGE=menubar` captures the menu bar panel (`BREWGUI_MENUBAR_QUERY=<text>` types into its search field).
 For screenshots: `BREWGUI_APPEARANCE=light|dark`, `BREWGUI_WINDOW_SIZE=1280x800`, `BREWGUI_SELECT=<entry>`
 (selects it in the Brewfile table), `BREWGUI_SEARCH=<package>` (opens it in Search) and

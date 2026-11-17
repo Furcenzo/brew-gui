@@ -43,10 +43,16 @@ struct ContentView: View {
         } message: {
             Text("Another program modified the file, but you still have unsaved changes here. Loading from the file will discard them.")
         }
+        .background(WindowReader { window in
+            guard model.hideWindowAtLaunch else { return }
+            model.hideWindowAtLaunch = false
+            window.close()
+            NSApp.setActivationPolicy(.accessory)
+        })
         .onAppear {
             model.undoManager = undoManager
             // The window may come back while the app lives only in the menu bar.
-            NSApp.setActivationPolicy(.regular)
+            if !model.hideWindowAtLaunch { NSApp.setActivationPolicy(.regular) }
         }
         .onChange(of: undoManager.map(ObjectIdentifier.init)) { model.undoManager = undoManager }
     }
@@ -136,5 +142,31 @@ struct KindLabel: View {
         Label(kind.title, systemImage: kind.symbol)
             .labelStyle(.titleAndIcon)
             .foregroundStyle(.secondary)
+    }
+}
+
+/// Hands over the window that hosts the view as soon as the view is added to it.
+struct WindowReader: NSViewRepresentable {
+    let onWindow: (NSWindow) -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = ReaderView()
+        view.onWindow = onWindow
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
+
+    final class ReaderView: NSView {
+        var onWindow: ((NSWindow) -> Void)?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard let window else { return }
+            // After the current layout pass – closing the window while SwiftUI sets it up is not safe.
+            DispatchQueue.main.async { [weak self] in
+                self?.onWindow?(window)
+            }
+        }
     }
 }

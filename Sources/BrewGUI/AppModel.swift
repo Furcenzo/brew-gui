@@ -96,6 +96,9 @@ final class AppModel {
         UserDefaults.standard.object(forKey: showMenuBarIconKey) == nil || UserDefaults.standard.bool(forKey: showMenuBarIconKey)
     }
 
+    /// Started by "Open at login": the main window closes as soon as it appears (see ContentView).
+    var hideWindowAtLaunch = false
+
     /// A package to show on the Search page (from the menu bar or BREWGUI_SEARCH); picked up once by SearchView.
     var pendingSearchQuery: String?
 

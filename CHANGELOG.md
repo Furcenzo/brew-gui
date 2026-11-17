@@ -5,6 +5,8 @@ version into the GitHub Release notes, so add a section before publishing.
 
 ## Unreleased
 
+- When Brew GUI is opened at login, it starts in the menu bar only, without the window (as long as the menu bar icon is on).
+
 ## 0.5.0
 
 - **Menu bar icon.** A mug in the menu bar shows the number of available updates; its panel has a quick `brew update`, *Upgrade All*, a search for packages (install them, optionally adding them to the Brewfile) and the apps you installed with Homebrew, ready to launch. With the icon, Brew GUI keeps running in the menu bar when you close its window. Turn it off in *Settings* (⌘,).
