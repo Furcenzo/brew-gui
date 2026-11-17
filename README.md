@@ -42,6 +42,8 @@ xattr -dr com.apple.quarantine "/Applications/Brew GUI.app"
 - **Sync** – `brew bundle check`, `install` (optionally without upgrading),
   `cleanup` with a preview before anything is uninstalled, `dump` to a new file.
 - **Updates** – `brew outdated` (including `--greedy`), upgrade selected packages or everything, `brew update`.
+  `brew update` also runs automatically at launch and when you return to the app after it has been in the
+  background for a while (5–60 minutes, set in Settings ⌘,).
 - **Not in Brewfile** – packages, taps and App Store apps installed outside your Brewfile; add them with one click.
   The *Apps* tab lists apps installed by hand (not via Homebrew or the App Store), finds a matching cask and lets
   Homebrew adopt them (`brew install --cask --adopt`) or reinstall them from the cask.

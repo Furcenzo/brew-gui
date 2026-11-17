@@ -4,6 +4,7 @@
 "%@ is listed in the Brewfile. If you keep it there, `brew bundle install` will install it again." = "%@ je v Brewfile. Ak ho tam necháte, `brew bundle install` ho znovu nainštaluje.";
 "%@ — edited" = "%@ — upravené";
 "%lld formulae and %lld casks" = "%lld formulae a %lld casks";
+"%lld min" = "%lld min";
 "--greedy: include casks that update themselves" = "--greedy: zahrnúť casks, ktoré sa aktualizujú samé";
 "A list of packages you have installed that are missing from the Brewfile." = "Zoznam balíkov, ktoré máte nainštalované, ale v Brewfile chýbajú.";
 "Add" = "Pridať";
@@ -40,6 +41,7 @@
 "Brew GUI looks for brew in /opt/homebrew/bin and /usr/local/bin." = "Brew GUI hľadá brew v /opt/homebrew/bin a /usr/local/bin.";
 "Brew is still working" = "Brew ešte pracuje";
 "brew update" = "brew update";
+"brew update (automatic)" = "brew update (automaticky)";
 "Brewfile" = "Brewfile";
 "Brewfile Cleanup" = "Upratanie podľa Brewfile";
 "Brewfile Edit" = "úprava Brewfile";
@@ -50,6 +52,7 @@
 "Caveats" = "Upozornenia";
 "Check" = "Skontrolovať";
 "Check Brewfile" = "Skontrolovať Brewfile";
+"Check for package updates automatically" = "Automaticky zisťovať aktualizácie balíkov";
 "Checking Brewfile" = "Kontrola Brewfile";
 "Checking for outdated packages…" = "Zisťujem zastarané balíky…";
 "Clean Up to Match Brewfile" = "Upratať podľa Brewfile";
@@ -184,6 +187,7 @@
 "Reorder the lines in the file" = "Usporiadať riadky v súbore";
 "Replacement: %@" = "Náhrada: %@";
 "Run brew update for the latest information." = "Pre najnovšie informácie spustite brew update.";
+"Runs brew update when Brew GUI starts, and again when you come back to it after it has been in the background for the selected time. New versions then show up under Updates." = "Spustí brew update pri štarte Brew GUI a znova, keď sa do nej vrátite po tom, ako bola zvolený čas na pozadí. Nové verzie sa potom zobrazia v Aktualizáciách.";
 "Save" = "Uložiť";
 "Save Brewfile" = "Uložiť Brewfile";
 "Scan Applications again" = "Znovu prehľadať Aplikácie";
@@ -249,6 +253,7 @@
 "View" = "Zobrazenie";
 "VS Code Extensions" = "VS Code rozšírenia";
 "Wait" = "Počkať";
+"When returning to the app after" = "Pri návrate do aplikácie po";
 "Write the selected items to the Brewfile" = "Zapísať vybrané do Brewfile";
 "yes" = "áno";
 "You have changes that haven't been saved yet. Overwrite the file on disk with them?" = "Máte tu zmeny, ktoré ešte nie sú uložené. Prepísať nimi súbor na disku?";

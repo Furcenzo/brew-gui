@@ -13,6 +13,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate()
         scheduleDebugSnapshot()
+        model.autoUpdateOnLaunch()
+    }
+
+    func applicationDidResignActive(_ notification: Notification) {
+        model.appDidResignActive()
     }
 
     /// Debugging: `BREWGUI_SNAPSHOT=/path.png [BREWGUI_PAGE=sync|outdated|unmanaged|search|missing]`
@@ -61,6 +66,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidBecomeActive(_ notification: Notification) {
         model.checkExternalChanges()
         model.refreshOnActivation()
+        model.autoUpdateOnActivation()
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
@@ -106,6 +112,10 @@ struct BrewGUIApp: App {
         .defaultSize(width: 1320, height: 800)
         .commands {
             AppCommands(model: delegate.model)
+        }
+
+        Settings {
+            SettingsView()
         }
     }
 }

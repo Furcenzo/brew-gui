@@ -5,6 +5,8 @@ version into the GitHub Release notes, so add a section before publishing.
 
 ## Unreleased
 
+- **Automatic `brew update`.** Brew GUI fetches the latest package information when it starts and when you come back to it after it has been in the background for a while (15 minutes by default), so new versions show up under *Updates*. Change the interval or turn it off in *Settings* (⌘,).
+
 ## 0.3.1
 
 - **Cask suggestions are more reliable.** A single cask Homebrew refuses to load (for example from a tap you don't trust, or one that was removed) no longer hides the suggestions for other apps in *Not in Brewfile → Apps*.

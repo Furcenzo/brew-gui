@@ -395,7 +395,11 @@ final class AppModel {
 
     /// Runs `brew <args>` with live output in the console; refreshes the state when finished.
     @discardableResult
-    func run(_ title: String, _ args: [String], refresh: Bool = true, onFinish: (@MainActor (Bool) -> Void)? = nil) -> Job? {
+    /// `revealOnFailure: false` keeps the console collapsed when the command fails (used for background jobs).
+    func run(
+        _ title: String, _ args: [String], refresh: Bool = true, revealOnFailure: Bool = true,
+        onFinish: (@MainActor (Bool) -> Void)? = nil
+    ) -> Job? {
         guard let client else {
             errorMessage = String(localized: "Homebrew not found.")
             return nil
@@ -420,7 +424,7 @@ final class AppModel {
                 job.state = Task.isCancelled ? .cancelled : .failed(-1)
             }
             if job.state == .running { job.state = .cancelled }
-            if job.state != .succeeded { self?.consoleExpanded = true }
+            if job.state != .succeeded && revealOnFailure { self?.consoleExpanded = true }
             onFinish?(job.state == .succeeded)
             if refresh {
                 await self?.refreshInstalled()
@@ -513,7 +517,53 @@ final class AppModel {
     }
 
     func brewUpdate() {
+        lastBrewUpdate = Date()
         run("brew update", ["update"])
+    }
+
+    // MARK: - Automatic brew update
+
+    @ObservationIgnored private var lastBrewUpdate: Date?
+    @ObservationIgnored private var inactiveSince: Date?
+
+    // bool(forKey:)/integer(forKey:) also understand values given as text (e.g. `-autoUpdateMinutes 5` on the command line).
+    private var autoUpdateEnabled: Bool {
+        let defaults = UserDefaults.standard
+        return defaults.object(forKey: AutoUpdatePolicy.enabledKey) == nil || defaults.bool(forKey: AutoUpdatePolicy.enabledKey)
+    }
+
+    private var autoUpdateInterval: TimeInterval {
+        let defaults = UserDefaults.standard
+        let minutes = defaults.object(forKey: AutoUpdatePolicy.intervalKey) == nil
+            ? AutoUpdatePolicy.defaultMinutes : defaults.integer(forKey: AutoUpdatePolicy.intervalKey)
+        return TimeInterval(minutes) * 60
+    }
+
+    /// At launch: always fetch the latest package information, so the Updates list is current.
+    func autoUpdateOnLaunch() {
+        guard autoUpdateEnabled else { return }
+        autoBrewUpdate(reason: "launch")
+    }
+
+    func appDidResignActive() {
+        inactiveSince = Date()
+    }
+
+    /// When the user comes back after the app was in the background for the configured time.
+    func autoUpdateOnActivation() {
+        defer { inactiveSince = nil }
+        guard autoUpdateEnabled, AutoUpdatePolicy.shouldUpdateOnActivation(
+            now: Date(), inactiveSince: inactiveSince, lastUpdate: lastBrewUpdate, interval: autoUpdateInterval
+        ) else { return }
+        autoBrewUpdate(reason: "activation")
+    }
+
+    private func autoBrewUpdate(reason: String) {
+        // Another brew command holds Homebrew's lock; the next activation will try again.
+        guard client != nil, !isBusy else { return }
+        log.notice("Automatic brew update (\(reason, privacy: .public))")
+        lastBrewUpdate = Date()
+        run(String(localized: "brew update (automatic)"), ["update"], revealOnFailure: false)
     }
 
     func bundleCheck() {
