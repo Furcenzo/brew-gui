@@ -14,7 +14,13 @@ and `Sources/BrewGUI/Resources/AppIcon.icns` (commit both).
 `.claude/settings.json` are copies from mac-app-kit (`../mac-app-kit`, shared with Lineup and the author's other
 Mac apps). Don't edit them here: change them in the kit and run its `./sync.sh` (`./sync.sh --check` lists
 differences). Brew GUI's settings for them (name, bundle ID, repository, cask, dev.furian.sk slug…) are in `app.conf`.
-Brew GUI builds use the real bundle ID also in development (`DEV_CHANNEL=0`). `build-app.sh` signs with a local
+**Development builds are "Brew GUI Dev"** (bundle ID `io.github.furcenzo.brewgui.dev`, `CHANNEL=dev`, the default
+of `build-app.sh`); only `release.sh` and `install-local.sh` build the real `io.github.furcenzo.brewgui`
+(`CHANNEL=release`) and they delete their staging copies afterwards. Reason: the login item ("Open at login"),
+Spotlight and LaunchServices pick an app by bundle ID, so a second copy with the real ID could stand in for the
+installed app. "Brew GUI Dev" has its own settings (last Brewfile, window size…) and its own login item;
+`./scripts/run.sh` quits only the dev build, the installed Brew GUI keeps running next to it.
+`build-app.sh` signs with a local
 "Brew GUI Local Dev" certificate when it exists (created once by the user with `./scripts/setup-dev-signing.sh`,
 which needs the login password – never run it for the user), otherwise ad-hoc with a warning.
 
