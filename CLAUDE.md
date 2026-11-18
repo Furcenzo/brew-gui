@@ -3,7 +3,7 @@
 Native macOS app (SwiftUI, Swift Package Manager, macOS 15+) for managing Homebrew and a Brewfile.
 `Sources/BrewCore` = Brewfile parser, process runner, `brew` CLI wrapper (no UI, tested);
 `Sources/BrewGUI` = the SwiftUI app. Build: `swift build`, tests: `swift test`,
-app bundle: `./scripts/build-app.sh` → `build/Brew GUI.app`, build + restart: `./scripts/run.sh [sk|en]`.
+app bundle: `./scripts/build-app.sh` → `build/Brew GUI Dev.app`, build + restart: `./scripts/run.sh [sk|en]`.
 
 App icon: drawn by `scripts/icon/AppIcon.swift`; `./scripts/make-icon.sh` regenerates `scripts/icon/AppIcon.png`
 and `Sources/BrewGUI/Resources/AppIcon.icns` (commit both).
@@ -55,7 +55,7 @@ Every change that adds or changes a user-facing text must keep **both languages*
   `scripts/hooks/claude-stop-l10n.sh`) and the git pre-commit hook (`.githooks/pre-commit`,
   enable with `git config core.hooksPath .githooks`).
 - To check the UI visually in a given language: build the app, then
-  `"build/Brew GUI.app/Contents/MacOS/BrewGUI" -AppleLanguages '(sk)'` (or `'(en)'`).
+  `"build/Brew GUI Dev.app/Contents/MacOS/BrewGUI" -AppleLanguages '(sk)'` (or `'(en)'`).
   `swift run` has no app bundle and therefore always shows English.
 
 ## Releases

@@ -14,7 +14,7 @@ SHOT_ID="io.github.furcenzo.brewgui.screenshots"
 trap 'rm -rf "$WORK"; defaults delete "$SHOT_ID" >/dev/null 2>&1; rm -f ~/Library/Preferences/"$SHOT_ID".plist' EXIT
 
 APP="$WORK/Brew GUI.app"
-cp -R "build/Brew GUI.app" "$APP"
+cp -R "build/Brew GUI Dev.app" "$APP"
 /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $SHOT_ID" "$APP/Contents/Info.plist"
 codesign --force --sign - "$APP" >/dev/null 2>&1
 

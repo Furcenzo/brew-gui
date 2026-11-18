@@ -101,7 +101,7 @@ The screenshots use the sample [docs/screenshots/Brewfile](docs/screenshots/Brew
 swift run BrewGUI
 ```
 
-Build a standalone app into `build/Brew GUI.app` – a development build named "Brew GUI Dev" (bundle ID
+Build a standalone app into `build/Brew GUI Dev.app` – a development build named "Brew GUI Dev" (bundle ID
 `io.github.furcenzo.brewgui.dev`, its own settings), so it never stands in for the installed Brew GUI –
 or build it and start it right away (`sk`/`en` forces a language):
 
@@ -117,7 +117,7 @@ swift test
 ```
 
 `swift run` always shows the English UI (there is no app bundle); to try another language, run the built app with
-`"build/Brew GUI.app/Contents/MacOS/BrewGUI" -AppleLanguages '(sk)'`.
+`"build/Brew GUI Dev.app/Contents/MacOS/BrewGUI" -AppleLanguages '(sk)'`.
 
 ## Translations
 
