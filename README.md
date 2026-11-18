@@ -151,8 +151,10 @@ the app's page on [dev.furian.sk](https://dev.furian.sk) (skipped when that site
 - `Sources/BrewCore` – Brewfile parser, process runner, wrapper around the `brew` CLI (no UI, tested).
 - `Sources/BrewGUI` – the SwiftUI app (`AppModel` + screens); `Resources/*.lproj` – translations.
 - `Tests/BrewCoreTests` – tests for the parser and the process runner.
-- `scripts/` – app bundle build, release, translation check and the Claude Code hook;
-  `scripts/icon/` – the app icon is drawn in code (`AppIcon.swift`), `make-icon.sh` rebuilds `AppIcon.icns`.
+- `scripts/` – app bundle build, release, translation check, dev signing and the Claude Code hook, from
+  [mac-app-kit](https://github.com/Furcenzo/mac-app-kit) (the shared scripts of the author's Mac apps; Brew GUI's
+  settings for them are in `app.conf`); `scripts/icon/` – the app icon is drawn in code (`AppIcon.swift`),
+  `scripts/make-icon.sh` rebuilds `AppIcon.png` and `AppIcon.icns`.
 
 ## Debugging
 

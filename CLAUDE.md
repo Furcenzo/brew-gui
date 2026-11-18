@@ -3,7 +3,20 @@
 Native macOS app (SwiftUI, Swift Package Manager, macOS 15+) for managing Homebrew and a Brewfile.
 `Sources/BrewCore` = Brewfile parser, process runner, `brew` CLI wrapper (no UI, tested);
 `Sources/BrewGUI` = the SwiftUI app. Build: `swift build`, tests: `swift test`,
-app bundle: `./scripts/build-app.sh` → `build/Brew GUI.app`.
+app bundle: `./scripts/build-app.sh` → `build/Brew GUI.app`, build + restart: `./scripts/run.sh [sk|en]`.
+
+App icon: drawn by `scripts/icon/AppIcon.swift`; `./scripts/make-icon.sh` regenerates `scripts/icon/AppIcon.png`
+and `Sources/BrewGUI/Resources/AppIcon.icns` (commit both).
+
+## Shared scripts (mac-app-kit)
+
+`scripts/` (except `scripts/icon/`, `scripts/screenshots.sh` and `scripts/release-notes.md`), `.githooks/` and
+`.claude/settings.json` are copies from mac-app-kit (`../mac-app-kit`, shared with Lineup and the author's other
+Mac apps). Don't edit them here: change them in the kit and run its `./sync.sh` (`./sync.sh --check` lists
+differences). Brew GUI's settings for them (name, bundle ID, repository, cask, dev.furian.sk slug…) are in `app.conf`.
+Brew GUI builds use the real bundle ID also in development (`DEV_CHANNEL=0`). `build-app.sh` signs with a local
+"Brew GUI Local Dev" certificate when it exists (created once by the user with `./scripts/setup-dev-signing.sh`,
+which needs the login password – never run it for the user), otherwise ad-hoc with a warning.
 
 ## Localization – the app is bilingual (English + Slovak)
 
@@ -41,10 +54,10 @@ Every change that adds or changes a user-facing text must keep **both languages*
 
 ## Releases
 
-`./scripts/release.sh <version>` builds a universal (Apple silicon + Intel) app and zips it into
-`build/`. `./scripts/release.sh <version> --publish` also tags `v<version>`, pushes the tag and creates
+`./scripts/release.sh <version>` builds a universal (Apple silicon + Intel), ad-hoc signed app into
+`build/release/` and zips it into `build/`. `./scripts/release.sh <version> --publish` also tags `v<version>`, pushes the tag and creates
 a GitHub Release with the zip; its "What's new" is the `## <version>` section of `CHANGELOG.md`
-(the script refuses to publish without it), and it bumps `version`/`sha256` of `Casks/brew-gui.rb` in the
+(the script refuses to publish without it), the download instructions come from `scripts/release-notes.md`, and it bumps `version`/`sha256` of `Casks/brew-gui.rb` in the
 `Furcenzo/homebrew-tap` repository (users install with `brew install --cask furcenzo/tap/brew-gui`). When you make a user-facing change, add a line under
 `## Unreleased` in `CHANGELOG.md`; at release time rename that heading to the version. Publishing is public and irreversible – only run `--publish` when the
 user explicitly asked for it. The app is ad-hoc signed, not notarized (no Apple Developer ID), so the
