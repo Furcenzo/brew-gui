@@ -5,6 +5,9 @@ version into the GitHub Release notes, so add a section before publishing.
 
 ## Unreleased
 
+- **Stashed packages.** Right-click a Brewfile entry and choose *Stash…*: Brew GUI uninstalls it but keeps it in the Brewfile as a comment (`# stash: cask "foo"`), which `brew bundle` ignores. The new *Stashed* list installs it again with one click. *Export Current State* into the open Brewfile keeps the stashed lines.
+- **Unused Apps** lists the apps you haven't opened for a while (30, 90, 180 or 365 days) and lets you stash or uninstall them, or keep them off the list.
+
 ## 0.5.1
 
 - When Brew GUI is opened at login, it starts in the menu bar only, without the window (as long as the menu bar icon is on).

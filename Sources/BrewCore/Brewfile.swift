@@ -175,11 +175,20 @@ public struct BrewfileEntry: Identifiable, Hashable, Sendable {
 }
 
 /// A whole Brewfile – preserves comments, blank lines and unknown Ruby code.
+///
+/// Stashed entries are packages kept in the Brewfile but not installed. They are comment lines
+/// (`# stash: cask "foo"`), so `brew bundle install` and `brew bundle cleanup` ignore them. Brew GUI
+/// recognises them anywhere in the file and adds new ones to a block at the end, under `stashHeader`.
 public struct Brewfile: Hashable, Sendable {
     public enum Line: Hashable, Sendable {
         case entry(BrewfileEntry)
+        /// A stashed entry; `prefix` is the comment marker as written (`# stash: `).
+        case stashed(BrewfileEntry, prefix: String)
         case raw(String)
     }
+
+    public static let stashPrefix = "# stash: "
+    public static let stashHeader = "# Stashed by Brew GUI – kept in the Brewfile, not installed (brew bundle ignores these lines)"
 
     public var lines: [Line]
     public var trailingNewline: Bool
@@ -194,14 +203,29 @@ public struct Brewfile: Hashable, Sendable {
         trailingNewline = text.hasSuffix("\n")
         if trailingNewline { parts.removeLast() }
         lines = parts.map { raw in
-            BrewfileEntry.parse(line: raw).map(Line.entry) ?? .raw(raw)
+            if let entry = BrewfileEntry.parse(line: raw) { return .entry(entry) }
+            if let (prefix, entry) = Self.parseStashed(raw) { return .stashed(entry, prefix: prefix) }
+            return .raw(raw)
         }
+    }
+
+    /// `# stash: cask "foo"` → the marker and the entry.
+    static func parseStashed(_ raw: String) -> (prefix: String, entry: BrewfileEntry)? {
+        guard let range = raw.range(of: #"^\s*#\s*stash:\s*"#, options: [.regularExpression, .caseInsensitive]),
+              let entry = BrewfileEntry.parse(line: String(raw[range.upperBound...]))
+        else { return nil }
+        return (String(raw[range]), entry)
+    }
+
+    static func isStashHeader(_ raw: String) -> Bool {
+        raw.trimmingCharacters(in: .whitespaces).hasPrefix("# Stashed by Brew GUI")
     }
 
     public var text: String {
         let body = lines.map { line -> String in
             switch line {
             case .entry(let entry): entry.line
+            case .stashed(let entry, let prefix): prefix + entry.line
             case .raw(let raw): raw
             }
         }.joined(separator: "\n")
@@ -248,9 +272,79 @@ public struct Brewfile: Hashable, Sendable {
             lines.insert(.entry(entry), at: index + 1)
         } else if let index = lines.firstIndex(where: { if case .entry = $0 { true } else { false } }) {
             lines.insert(.entry(entry), at: index)
+        } else if let index = lines.firstIndex(where: { if case .raw(let raw) = $0 { Self.isStashHeader(raw) } else { false } }) {
+            lines.insert(.entry(entry), at: index)
         } else {
             lines.append(.entry(entry))
         }
+    }
+
+    // MARK: Stash
+
+    public var stashedEntries: [BrewfileEntry] {
+        lines.compactMap { if case .stashed(let entry, _) = $0 { entry } else { nil } }
+    }
+
+    public func stashedEntry(id: UUID) -> BrewfileEntry? {
+        stashedEntries.first { $0.id == id }
+    }
+
+    public func isStashed(kind: EntryKind, name: String) -> Bool {
+        let key = BrewfileEntry(kind: kind, name: name).identityKey
+        return stashedEntries.contains { $0.identityKey == key }
+    }
+
+    /// Moves the entries (and their duplicates) to the stash.
+    public mutating func stash(ids: Set<UUID>) {
+        let chosen = entries.filter { ids.contains($0.id) }
+        let keys = Set(chosen.map(\.identityKey))
+        lines.removeAll { if case .entry(let e) = $0 { keys.contains(e.identityKey) } else { false } }
+        for entry in chosen { stash(entry) }
+    }
+
+    /// Adds a stashed line for the package (unless it is stashed already) and removes it from the active entries.
+    public mutating func stash(_ entry: BrewfileEntry) {
+        let key = entry.identityKey
+        lines.removeAll { if case .entry(let e) = $0 { e.identityKey == key } else { false } }
+        guard !stashedEntries.contains(where: { $0.identityKey == key }) else { return }
+        let line = Line.stashed(entry, prefix: Self.stashPrefix)
+        if let index = lines.lastIndex(where: { if case .stashed = $0 { true } else { false } }) {
+            lines.insert(line, at: index + 1)
+        } else if let index = lines.lastIndex(where: { if case .raw(let raw) = $0 { Self.isStashHeader(raw) } else { false } }) {
+            lines.insert(line, at: index + 1)
+        } else {
+            while lines.last == .raw("") { lines.removeLast() }
+            if !lines.isEmpty { lines.append(.raw("")) }
+            lines += [.raw(Self.stashHeader), line]
+            if !trailingNewline { trailingNewline = true }
+        }
+    }
+
+    /// Turns stashed lines back into entries (they are not installed by this).
+    public mutating func unstash(ids: Set<UUID>) {
+        let chosen = stashedEntries.filter { ids.contains($0.id) }
+        removeStashed(ids: ids)
+        for entry in chosen where !contains(kind: entry.kind, name: entry.name) { add(entry) }
+    }
+
+    public mutating func removeStashed(ids: Set<UUID>) {
+        lines.removeAll { if case .stashed(let e, _) = $0 { ids.contains(e.id) } else { false } }
+        removeEmptyStashHeader()
+    }
+
+    /// Puts back stashed lines of `other` that this file lacks – `brew bundle dump` rewrites the whole file.
+    public mutating func restoreStash(from other: Brewfile) {
+        for entry in other.stashedEntries where !contains(kind: entry.kind, name: entry.name) {
+            stash(entry)
+        }
+    }
+
+    private mutating func removeEmptyStashHeader() {
+        guard stashedEntries.isEmpty,
+              let index = lines.firstIndex(where: { if case .raw(let raw) = $0 { Self.isStashHeader(raw) } else { false } })
+        else { return }
+        lines.remove(at: index)
+        if index == lines.count { while lines.last == .raw("") { lines.removeLast() } }
     }
 
     /// Sorts entries by kind and name. Comments directly above an entry move with it,
@@ -259,15 +353,20 @@ public struct Brewfile: Hashable, Sendable {
         var header: [Line] = []
         var blocks: [(entry: BrewfileEntry, comments: [String])] = []
         var pendingComments: [String] = []
+        var stashed: [Line] = []
 
         for line in lines {
             switch line {
             case .entry(let entry):
                 blocks.append((entry, pendingComments))
                 pendingComments = []
+            case .stashed:
+                stashed.append(line)
             case .raw(let raw):
                 let trimmed = raw.trimmingCharacters(in: .whitespaces)
-                if trimmed.hasPrefix("#") {
+                if Self.isStashHeader(raw) {
+                    continue
+                } else if trimmed.hasPrefix("#") {
                     // Comments before the first entry are the file header and stay at the top.
                     if blocks.isEmpty { header.append(.raw(raw)) } else { pendingComments.append(raw) }
                 } else if trimmed.isEmpty {
@@ -307,6 +406,21 @@ public struct Brewfile: Hashable, Sendable {
         if !trailingComments.isEmpty {
             result.append(.raw(""))
             result += trailingComments.map(Line.raw)
+        }
+        if !stashed.isEmpty {
+            func key(_ line: Line) -> BrewfileEntry? { if case .stashed(let e, _) = line { e } else { nil } }
+            stashed.sort { a, b in
+                guard let a = key(a), let b = key(b) else { return false }
+                if a.kind != b.kind { return a.kind.sortOrder < b.kind.sortOrder }
+                return a.name.localizedStandardCompare(b.name) == .orderedAscending
+            }
+            if removeDuplicates {
+                var seen = Set<String>()
+                stashed = stashed.filter { key($0).map { seen.insert($0.identityKey).inserted } ?? true }
+            }
+            if !result.isEmpty { result.append(.raw("")) }
+            result.append(.raw(Self.stashHeader))
+            result += stashed
         }
         lines = result
     }

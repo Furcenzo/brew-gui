@@ -61,9 +61,11 @@ struct ContentView: View {
         switch model.sidebarSelection ?? .brewfile(nil) {
         case .brewfile(let kind): BrewfileView(kindFilter: kind, missingOnly: false)
         case .missing: BrewfileView(kindFilter: nil, missingOnly: true)
+        case .stashed: StashedView()
         case .sync: SyncView()
         case .outdated: OutdatedView()
         case .unmanaged: UnmanagedView()
+        case .unused: UnusedAppsView()
         case .search: SearchView()
         }
     }
@@ -90,6 +92,9 @@ struct SidebarView: View {
                 Label("Missing", systemImage: "exclamationmark.circle")
                     .badge(model.missingEntries.count)
                     .tag(SidebarItem.missing)
+                Label("Stashed", systemImage: "archivebox")
+                    .badge(model.brewfile.stashedEntries.count)
+                    .tag(SidebarItem.stashed)
             }
             Section("System") {
                 Label("Sync", systemImage: "arrow.triangle.2.circlepath")
@@ -100,6 +105,9 @@ struct SidebarView: View {
                 Label("Not in Brewfile", systemImage: "tray")
                     .badge(model.unmanaged.count)
                     .tag(SidebarItem.unmanaged)
+                Label("Unused Apps", systemImage: "moon.zzz")
+                    .badge(model.usageLoaded ? model.unusedApps(days: model.unusedDays, includeKept: false).count : 0)
+                    .tag(SidebarItem.unused)
                 Label("Search Packages", systemImage: "magnifyingglass")
                     .tag(SidebarItem.search)
             }

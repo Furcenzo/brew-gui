@@ -56,7 +56,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.appDidResignActive()
     }
 
-    /// Debugging: `BREWGUI_SNAPSHOT=/path.png [BREWGUI_PAGE=sync|outdated|unmanaged|apps|search|missing]`
+    /// Debugging: `BREWGUI_SNAPSHOT=/path.png [BREWGUI_PAGE=sync|outdated|unmanaged|apps|search|missing|stashed|unused]`
     /// saves an image of the window once loaded (no screen recording permission needed) and quits the app.
     /// Used by scripts/screenshots.sh together with BREWGUI_APPEARANCE=light|dark, BREWGUI_WINDOW_SIZE=1200x750,
     /// BREWGUI_SELECT=<entry name> (Brewfile inspector) and BREWGUI_SEARCH=<package> (Search page).
@@ -98,6 +98,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             UserDefaults.standard.set("apps", forKey: "unmanagedMode")
             model.sidebarSelection = .unmanaged
         case "search": model.sidebarSelection = .search
+        case "stashed": model.sidebarSelection = .stashed
+        case "unused": model.sidebarSelection = .unused
         case "missing": model.sidebarSelection = .missing
         case "casks": model.sidebarSelection = .brewfile(.cask)
         case "check":

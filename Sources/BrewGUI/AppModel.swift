@@ -32,9 +32,11 @@ final class Job: Identifiable {
 enum SidebarItem: Hashable {
     case brewfile(EntryKind?)
     case missing
+    case stashed
     case sync
     case outdated
     case unmanaged
+    case unused
     case search
 }
 
@@ -80,6 +82,15 @@ final class AppModel {
     private(set) var appsLoaded = false
     private(set) var loadingApps = false
     @ObservationIgnored private var caskInfoCache: [String: CaskInfo] = [:]
+
+    // Apps not opened for a while
+    private(set) var appUsage: [InstalledApp: AppUsage] = [:]
+    private(set) var usageLoaded = false
+    private(set) var loadingUsage = false
+    static let unusedDaysKey = "unusedAppsDays"
+    static let keptAppsKey = "keptUnusedApps"
+    /// Apps the user chose to keep – not suggested any more (paths).
+    private(set) var keptApps: Set<String> = Set(UserDefaults.standard.stringArray(forKey: AppModel.keptAppsKey) ?? [])
 
     // Jobs
     private(set) var jobs: [Job] = []
@@ -338,6 +349,49 @@ final class AppModel {
         appsLoaded = true
     }
 
+    /// Scans the Applications folders and reads when each app was last opened (Spotlight).
+    func refreshUsage() async {
+        guard !loadingUsage else { return }
+        if !installedLoaded { await refreshInstalled() }
+        loadingUsage = true
+        defer { loadingUsage = false }
+        let directories = ProcessInfo.processInfo.environment["BREWGUI_APPS_DIRS"]
+            .map { $0.split(separator: ":").map { URL(fileURLWithPath: String($0), isDirectory: true) } }
+            ?? InstalledApp.standardDirectories
+        appUsage = await Task.detached {
+            let apps = InstalledApp.scan(directories)
+            return Dictionary(uniqueKeysWithValues: apps.map { ($0, AppUsage.read($0.url)) })
+        }.value
+        usageLoaded = true
+    }
+
+    /// How many days without opening make an app unused (Unused Apps page).
+    var unusedDays: Int = {
+        let days = UserDefaults.standard.integer(forKey: AppModel.unusedDaysKey)
+        return days > 0 ? days : UnusedApps.defaultDays
+    }() {
+        didSet { UserDefaults.standard.set(unusedDays, forKey: Self.unusedDaysKey) }
+    }
+
+    /// Apps not opened for `unusedDays` days, with where they come from.
+    func unusedApps(days: Int, includeKept: Bool) -> [UnusedApp] {
+        guard usageLoaded else { return [] }
+        let usage = Dictionary(uniqueKeysWithValues: appUsage.map { ($0.key.id, $0.value) })
+        let masApps = installed.masApps.map { Array($0.values) } ?? []
+        return UnusedApps.filter(Array(appUsage.keys), usage: usage, days: days)
+            .filter { includeKept || !keptApps.contains($0.id) }
+            .map { app in
+                UnusedApp(app: app, usage: usage[app.id] ?? AppUsage(),
+                          source: UnusedApps.source(of: app, caskApps: caskApps, masApps: masApps),
+                          isKept: keptApps.contains(app.id))
+            }
+    }
+
+    func setKept(_ app: UnusedApp, _ kept: Bool) {
+        if kept { keptApps.insert(app.id) } else { keptApps.remove(app.id) }
+        UserDefaults.standard.set(keptApps.sorted(), forKey: Self.keptAppsKey)
+    }
+
     func refreshOutdated() async {
         guard let client, !loadingOutdated else { return }
         loadingOutdated = true
@@ -546,6 +600,65 @@ final class AppModel {
         }
     }
 
+    // MARK: - Stash
+
+    /// The name `uninstall(kind:name:)` expects (`mas` uninstalls by App Store ID).
+    private func uninstallName(of entry: BrewfileEntry) -> String {
+        entry.kind == .mas ? (entry.masID ?? entry.name) : entry.name
+    }
+
+    private func isInstalled(_ entry: BrewfileEntry) -> Bool {
+        status(of: entry).isInstalled
+    }
+
+    /// Uninstalls the package (if it is installed) and keeps it in the Brewfile as a stashed line.
+    func stash(_ entry: BrewfileEntry) {
+        guard isInstalled(entry) else {
+            brewfile.stash(entry)
+            return
+        }
+        uninstall(kind: entry.kind, name: uninstallName(of: entry)) { [weak self] succeeded in
+            if succeeded { self?.brewfile.stash(entry) }
+        }
+    }
+
+    /// Makes a stashed entry active again and installs it.
+    func unstashAndInstall(_ entry: BrewfileEntry) {
+        install(entry) { [weak self] succeeded in
+            if succeeded { self?.brewfile.unstash(ids: [entry.id]) }
+        }
+    }
+
+    func removeStashed(ids: Set<UUID>) {
+        brewfile.removeStashed(ids: ids)
+    }
+
+    /// The Brewfile entry for an unused app (existing one if listed, otherwise a new one).
+    func brewfileEntry(for item: UnusedApp) -> BrewfileEntry? {
+        switch item.source {
+        case .cask(let token):
+            return brewfile.entries.first { $0.kind == .cask && ($0.name.lowercased() == token.lowercased() || $0.shortName.lowercased() == token.lowercased()) }
+                ?? BrewfileEntry(kind: .cask, name: token)
+        case .appStore(let id, let name):
+            return brewfile.entries.first { $0.masID == id } ?? BrewfileEntry(kind: .mas, name: name, options: "id: \(id)")
+        case .other:
+            return nil
+        }
+    }
+
+    /// Uninstalls an unused app and removes it from the Brewfile (active and stashed lines).
+    func uninstallUnused(_ item: UnusedApp) {
+        guard let entry = brewfileEntry(for: item) else { return }
+        uninstall(kind: entry.kind, name: uninstallName(of: entry)) { [weak self] succeeded in
+            guard succeeded, let self else { return }
+            let key = entry.identityKey
+            let ids = Set(brewfile.entries.filter { $0.identityKey == key || (entry.masID != nil && $0.masID == entry.masID) }.map(\.id))
+            if !ids.isEmpty { brewfile.remove(ids: ids) }
+            let stashed = Set(brewfile.stashedEntries.filter { $0.identityKey == key || (entry.masID != nil && $0.masID == entry.masID) }.map(\.id))
+            if !stashed.isEmpty { brewfile.removeStashed(ids: stashed) }
+        }
+    }
+
     func upgrade(_ packages: [OutdatedPackage]) {
         let formulae = packages.filter { !$0.isCask }.map(\.name)
         let casks = packages.filter(\.isCask).map(\.name)
@@ -624,7 +737,18 @@ final class AppModel {
     func bundleDump(to url: URL, describe: Bool) {
         var args = ["bundle", "dump", "--force", "--file=\(url.path)"]
         if describe { args.append("--describe") }
-        run(String(localized: "Exporting State to \(url.lastPathComponent)"), args, refresh: false)
+        // `brew bundle dump` rewrites the whole file – put the stashed lines back when it is the open Brewfile.
+        let isOpenFile = url.standardizedFileURL.resolvingSymlinksInPath() == fileURL.standardizedFileURL.resolvingSymlinksInPath()
+        let before = brewfile
+        if isOpenFile, isDirty { save() }
+        run(String(localized: "Exporting State to \(url.lastPathComponent)"), args, refresh: false) { [weak self] succeeded in
+            guard isOpenFile, let self else { return }
+            loadFile(fileURL)
+            if succeeded, !before.stashedEntries.isEmpty {
+                brewfile.restoreStash(from: before)
+                save()
+            }
+        }
     }
 
     /// `mas` uses the same mechanism – it runs as an external command with the `brew` environment.
@@ -680,6 +804,15 @@ struct UnmanagedApp: Identifiable, Hashable {
     var cask: CaskInfo?
     var id: String { app.id }
     var canAdopt: Bool { cask.map { UnmanagedApps.canAdopt(app, as: $0) } ?? false }
+}
+
+/// An app that hasn't been opened for a while.
+struct UnusedApp: Identifiable, Hashable {
+    var app: InstalledApp
+    var usage: AppUsage
+    var source: AppSource
+    var isKept: Bool
+    var id: String { app.id }
 }
 
 struct UnmanagedItem: Identifiable, Hashable {

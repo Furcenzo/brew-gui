@@ -33,6 +33,7 @@ struct BrewfileView: View {
     @State private var search = ""
     @State private var editing: EditorTarget?
     @State private var pendingUninstall: BrewfileEntry?
+    @State private var pendingStash: BrewfileEntry?
     @AppStorage("showInspector") private var showInspector = true
 
     var body: some View {
@@ -65,6 +66,19 @@ struct BrewfileView: View {
             Button("Uninstall, Keep in Brewfile", role: .destructive) { model.uninstall(kind: entry.kind, name: target) }
         } message: { entry in
             Text("This runs `brew uninstall` for \(entry.kind.title.lowercased()) \(entry.name). If you keep the Brewfile entry, `brew bundle install` will install it again.")
+        }
+        .confirmationDialog(
+            "Stash \(pendingStash?.name ?? "")?",
+            isPresented: Binding(get: { pendingStash != nil }, set: { if !$0 { pendingStash = nil } }),
+            presenting: pendingStash
+        ) { entry in
+            if model.status(of: entry).isInstalled {
+                Button("Uninstall and Stash", role: .destructive) { model.stash(entry); selection.remove(entry.id) }
+            } else {
+                Button("Stash") { model.stash(entry); selection.remove(entry.id) }
+            }
+        } message: { _ in
+            Text("Brew GUI uninstalls it and keeps it in the Brewfile as a comment (# stash:), so brew bundle doesn't install it again. You can install it later from Stashed.")
         }
         .onChange(of: kindFilter) { selection.removeAll() }
         .task(id: model.brewfile.entries.count) {
@@ -180,6 +194,9 @@ struct BrewfileView: View {
                         }
                     }
                     Button("Uninstall…") { pendingUninstall = entry }
+                }
+                if entry.kind != .tap {
+                    Button("Stash…") { pendingStash = entry }
                 }
             }
             Button("Copy Line") {

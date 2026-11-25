@@ -107,4 +107,96 @@ import Testing
         #expect(preview.taps == ["frankea/whisky"])
         #expect(preview.other == ["Would remove: /x (5MB)"])
     }
+
+    // MARK: Stash
+
+    @Test func parsesStashedLinesAnywhere() {
+        let text = """
+        brew "git"
+        #stash: cask "dockdoor" # replaced by WinTab
+        cask "raycast"
+        # stash: mas "Things 3", id: 904280696
+        # just a comment
+        """ + "\n"
+        let file = Brewfile(parsing: text)
+        #expect(file.text == text)
+        #expect(file.entries.map(\.name) == ["git", "raycast"])
+        #expect(file.stashedEntries.map(\.name) == ["dockdoor", "Things 3"])
+        #expect(file.stashedEntries[0].comment == "replaced by WinTab")
+        #expect(file.stashedEntries[1].masID == "904280696")
+        #expect(file.isStashed(kind: .cask, name: "DockDoor"))
+        #expect(!file.contains(kind: .cask, name: "dockdoor"))
+    }
+
+    @Test func stashMovesEntryToBlockAtEnd() {
+        var file = Brewfile(parsing: "brew \"git\"\ncask \"dockdoor\"\ncask \"dockdoor\"\ncask \"raycast\"\n\n")
+        let id = file.entries[1].id
+        file.stash(ids: [id])
+        #expect(file.text == """
+        brew "git"
+        cask "raycast"
+
+        \(Brewfile.stashHeader)
+        # stash: cask "dockdoor"
+
+        """)
+        let raycast = file.entries[1].id
+        file.stash(ids: [raycast])
+        #expect(file.stashedEntries.map(\.name) == ["dockdoor", "raycast"])
+        #expect(file.text.hasSuffix("# stash: cask \"dockdoor\"\n# stash: cask \"raycast\"\n"))
+    }
+
+    @Test func unstashRestoresEntryAndDropsEmptyHeader() {
+        var file = Brewfile(parsing: "brew \"git\"\ncask \"raycast\"\n")
+        file.stash(BrewfileEntry(kind: .cask, name: "dockdoor"))
+        file.unstash(ids: Set(file.stashedEntries.map(\.id)))
+        #expect(file.text == "brew \"git\"\ncask \"raycast\"\ncask \"dockdoor\"\n")
+        #expect(file.stashedEntries.isEmpty)
+    }
+
+    @Test func addGoesBeforeStashBlockInEmptyFile() {
+        var file = Brewfile()
+        file.stash(BrewfileEntry(kind: .cask, name: "dockdoor"))
+        file.add(BrewfileEntry(kind: .brew, name: "git"))
+        #expect(file.entries.map(\.name) == ["git"])
+        #expect(file.text.hasPrefix("brew \"git\"\n"))
+    }
+
+    @Test func removeStashed() {
+        var file = Brewfile(parsing: "brew \"git\"\n")
+        file.stash(BrewfileEntry(kind: .cask, name: "dockdoor"))
+        file.removeStashed(ids: Set(file.stashedEntries.map(\.id)))
+        #expect(file.text == "brew \"git\"\n")
+    }
+
+    @Test func sortKeepsStashBlockAtEnd() {
+        var file = Brewfile(parsing: """
+        # stash: cask "zed"
+        cask "raycast"
+        # stash: brew "wget"
+        brew "git"
+        """ + "\n")
+        file.sort()
+        #expect(file.text == """
+        brew "git"
+
+        cask "raycast"
+
+        \(Brewfile.stashHeader)
+        # stash: brew "wget"
+        # stash: cask "zed"
+
+        """)
+    }
+
+    @Test func restoreStashAfterDump() {
+        var old = Brewfile(parsing: "cask \"raycast\"\n")
+        old.stash(BrewfileEntry(kind: .cask, name: "dockdoor"))
+        old.stash(BrewfileEntry(kind: .cask, name: "zed"))
+        // `brew bundle dump` wrote the installed packages only; zed was installed again meanwhile.
+        var dumped = Brewfile(parsing: "cask \"raycast\"\ncask \"zed\"\n")
+        dumped.restoreStash(from: old)
+        #expect(dumped.stashedEntries.map(\.name) == ["dockdoor"])
+        #expect(dumped.entries.map(\.name) == ["raycast", "zed"])
+    }
 }

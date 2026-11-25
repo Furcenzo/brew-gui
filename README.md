@@ -48,6 +48,10 @@ If the app opens normally, there's nothing else to do.
   (installed, missing, outdated), description and version; filtering by type, search,
   duplicate highlighting. Add / edit / remove entries, sort the file, plain-text mode.
   Comments, blank lines and unrecognized Ruby code are preserved untouched when saving.
+- **Stashed** – keep a package in the Brewfile without having it installed: *Stash…* uninstalls it and turns its
+  line into a comment, `# stash: cask "foo"`, in a block at the end of the Brewfile. `brew bundle install` and
+  `cleanup` ignore comments, so they leave it alone; *Install* brings it back. Note that `brew bundle dump`
+  rewrites the whole file – *Export Current State* in Brew GUI puts the stashed lines back, a dump in Terminal doesn't.
 - **Sync** – `brew bundle check`, `install` (optionally without upgrading),
   `cleanup` with a preview before anything is uninstalled, `dump` to a new file.
 - **Updates** – `brew outdated` (including `--greedy`), upgrade selected packages or everything, `brew update`.
@@ -56,6 +60,8 @@ If the app opens normally, there's nothing else to do.
 - **Not in Brewfile** – packages, taps and App Store apps installed outside your Brewfile; add them with one click.
   The *Apps* tab lists apps installed by hand (not via Homebrew or the App Store), finds a matching cask and lets
   Homebrew adopt them (`brew install --cask --adopt`) or reinstall them from the cask.
+- **Unused Apps** – apps you haven't opened for 30–365 days (from macOS's "last opened" date), with a quick way
+  to stash or uninstall those that come from a cask or the App Store, or to keep them off the list.
 - **Search** – instant search across all formulae and casks with details (`brew info`).
   Installing a package offers to add it to the Brewfile too, uninstalling offers to remove it (applied only
   after `brew` succeeds).
