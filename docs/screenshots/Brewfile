@@ -24,3 +24,8 @@ cask "iina"
 
 # Mac App Store
 mas "Xcode", id: 497799835
+
+# Stashed by Brew GUI – kept in the Brewfile, not installed (brew bundle ignores these lines)
+# stash: cask "zoom" # only for occasional meetings
+# stash: cask "blender"
+# stash: mas "Keynote", id: 409183694

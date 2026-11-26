@@ -42,6 +42,11 @@ shot brewfile-dark.png dark en BREWGUI_SELECT=ripgrep
 shot sync-dark.png dark en BREWGUI_PAGE=sync
 shot search-light.png light en BREWGUI_SEARCH=iina
 shot brewfile-sk-light.png light sk BREWGUI_SELECT=neovim
+shot stashed-light.png light en BREWGUI_PAGE=stashed
+
+# Unused Apps: sample apps instead of this Mac's Applications (name:last opened:added days ago:source).
+SAMPLE_UNUSED="Firefox:210:400:cask=firefox,IINA:160:300:cask=iina,Keynote:130:500:mas=409183694,DockDoor:-:240:cask=dockdoor,Old Tool:300:700:other,Rectangle:95:380:cask=rectangle"
+shot unused-dark.png dark en BREWGUI_PAGE=unused BREWGUI_SAMPLE_UNUSED="$SAMPLE_UNUSED"
 
 # Menu bar panel: sample updates and only the apps from the sample Brewfile.
 SAMPLE_OUTDATED="brew:gh:2.103.0:2.104.0,brew:neovim:0.12.5:0.12.6,cask:visual-studio-code:1.145.0:1.146.0"

@@ -84,6 +84,10 @@ If a cask needs an administrator password, a system dialog is shown (via `SUDO_A
 |---|---|
 | ![Sync: brew bundle check, install, cleanup and dump](docs/screenshots/sync-dark.png) | ![Search with package details](docs/screenshots/search-light.png) |
 
+| Stashed | Unused Apps |
+|---|---|
+| ![Stashed packages kept in the Brewfile as comments](docs/screenshots/stashed-light.png) | ![Unused Apps: apps not opened for a while](docs/screenshots/unused-dark.png) |
+
 | Menu bar | Menu bar search |
 |---|---|
 | <img src="docs/screenshots/menubar-light.png" width="340" alt="Menu bar panel with available updates and Homebrew apps"> | <img src="docs/screenshots/menubar-search-dark.png" width="340" alt="Searching packages and apps from the menu bar"> |
@@ -177,7 +181,8 @@ simulates adding an entry (and ⌘Z) – only test this on a copy of your Brewfi
 For screenshots: `BREWGUI_APPEARANCE=light|dark`, `BREWGUI_WINDOW_SIZE=1280x800`, `BREWGUI_SELECT=<entry>`
 (selects it in the Brewfile table), `BREWGUI_SEARCH=<package>` (opens it in Search) and
 `BREWGUI_DISPLAY_PATH=~/Brewfile` (path shown instead of the real one),
-`BREWGUI_SAMPLE_OUTDATED=brew:gh:2.103.0:2.104.0,cask:…` (sample updates) and `BREWGUI_APPS_FROM_BREWFILE=1`
+`BREWGUI_SAMPLE_OUTDATED=brew:gh:2.103.0:2.104.0,cask:…` (sample updates),
+`BREWGUI_SAMPLE_UNUSED=Firefox:210:400:cask=firefox,…` (sample Unused Apps: name, days since opened / added, source) and `BREWGUI_APPS_FROM_BREWFILE=1`
 (the menu bar lists only apps of casks in the open Brewfile).
 
 ## License

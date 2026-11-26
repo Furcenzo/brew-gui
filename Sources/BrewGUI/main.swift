@@ -29,6 +29,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.autoUpdateOnLaunch()
     }
 
+    /// `Name:lastOpenedDaysAgo:addedDaysAgo:source,…` – `-` for no date; source `cask=token`, `mas=id` or `other`.
+    private static func sampleUnused(_ text: String) -> [(app: InstalledApp, usage: AppUsage, source: AppSource)] {
+        text.split(separator: ",").compactMap { item in
+            let parts = item.split(separator: ":", omittingEmptySubsequences: false).map(String.init)
+            guard parts.count == 4 else { return nil }
+            func date(_ days: String) -> Date? { Double(days).map { Date().addingTimeInterval(-$0 * 86_400) } }
+            let source: AppSource = if parts[3].hasPrefix("cask=") {
+                .cask(token: String(parts[3].dropFirst(5)))
+            } else if parts[3].hasPrefix("mas=") {
+                .appStore(id: String(parts[3].dropFirst(4)), name: parts[0])
+            } else {
+                .other
+            }
+            let app = InstalledApp(url: URL(fileURLWithPath: "/Applications/\(parts[0]).app"), isFromAppStore: parts[3].hasPrefix("mas="))
+            return (app, AppUsage(lastUsed: date(parts[1]), added: date(parts[2])), source)
+        }
+    }
+
     /// `brew:ripgrep:15.1.0:15.2.0,cask:visual-studio-code:1.145.0:1.146.0` → packages for the Updates list.
     private static func sampleOutdated(_ spec: String) -> [OutdatedPackage] {
         spec.split(separator: ",").compactMap { item in
@@ -73,6 +91,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.debugAppsFromBrewfile = env["BREWGUI_APPS_FROM_BREWFILE"] == "1"
         if let sample = env["BREWGUI_SAMPLE_OUTDATED"] {
             model.debugOutdated = Self.sampleOutdated(sample)
+        }
+        if let sample = env["BREWGUI_SAMPLE_UNUSED"] {
+            model.debugUnused = Self.sampleUnused(sample)
         }
         model.debugDisplayPath = env["BREWGUI_DISPLAY_PATH"]
         if let query = env["BREWGUI_SEARCH"] {

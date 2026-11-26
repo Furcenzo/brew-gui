@@ -119,6 +119,8 @@ final class AppModel {
     @ObservationIgnored var debugOutdated: [OutdatedPackage]?
     /// Only list the apps of casks that are in the open Brewfile (BREWGUI_APPS_FROM_BREWFILE).
     @ObservationIgnored var debugAppsFromBrewfile = false
+    /// Shown instead of the apps in Applications on the Unused Apps page (BREWGUI_SAMPLE_UNUSED).
+    @ObservationIgnored var debugUnused: [(app: InstalledApp, usage: AppUsage, source: AppSource)]?
     /// Shown instead of the real path of the Brewfile (BREWGUI_DISPLAY_PATH, e.g. `~/Brewfile` for screenshots).
     var debugDisplayPath: String?
 
@@ -355,6 +357,11 @@ final class AppModel {
         if !installedLoaded { await refreshInstalled() }
         loadingUsage = true
         defer { loadingUsage = false }
+        if let debugUnused {
+            appUsage = Dictionary(uniqueKeysWithValues: debugUnused.map { ($0.app, $0.usage) })
+            usageLoaded = true
+            return
+        }
         let directories = ProcessInfo.processInfo.environment["BREWGUI_APPS_DIRS"]
             .map { $0.split(separator: ":").map { URL(fileURLWithPath: String($0), isDirectory: true) } }
             ?? InstalledApp.standardDirectories
@@ -382,7 +389,8 @@ final class AppModel {
             .filter { includeKept || !keptApps.contains($0.id) }
             .map { app in
                 UnusedApp(app: app, usage: usage[app.id] ?? AppUsage(),
-                          source: UnusedApps.source(of: app, caskApps: caskApps, masApps: masApps),
+                          source: debugUnused?.first { $0.app == app }?.source
+                              ?? UnusedApps.source(of: app, caskApps: caskApps, masApps: masApps),
                           isKept: keptApps.contains(app.id))
             }
     }

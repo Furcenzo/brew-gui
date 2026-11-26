@@ -27,10 +27,6 @@ struct StashedView: View {
                         .width(min: 70, ideal: 90, max: 120)
                     TableColumn("Name") { entry in Text(entry.name).fontWeight(.medium) }
                         .width(min: 120, ideal: 200)
-                    TableColumn("Description") { entry in
-                        Text(model.installed.description(of: entry) ?? "").foregroundStyle(.secondary)
-                    }
-                    .width(min: 120, ideal: 260)
                     TableColumn("Options / Comment") { entry in
                         Text([entry.options, entry.comment.map { "# " + $0 } ?? ""].filter { !$0.isEmpty }.joined(separator: "  "))
                             .font(.callout.monospaced())
@@ -113,7 +109,9 @@ struct UnusedAppsView: View {
                 Table(items, selection: $selection) {
                     TableColumn("App") { item in
                         HStack(spacing: 6) {
-                            Image(nsImage: NSWorkspace.shared.icon(forFile: item.app.url.path))
+                            Image(nsImage: FileManager.default.fileExists(atPath: item.app.url.path)
+                                ? NSWorkspace.shared.icon(forFile: item.app.url.path)
+                                : NSWorkspace.shared.icon(for: .applicationBundle))
                                 .resizable()
                                 .frame(width: 18, height: 18)
                             Text(item.app.name).fontWeight(.medium)
